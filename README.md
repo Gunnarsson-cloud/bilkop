@@ -49,7 +49,7 @@ API:er eller partneravtal. Källor slås av och på i `server/sources.json`.
 - Varje sajt har sin egen tolkare i `server/sites.js`. Ändrar en sajt sin sidstruktur slutar den
   fungera tills tolkaren uppdateras; kör “Prova källor live” för att se vilka som fungerar.
 - Den publicerade sidan hämtar upp till 15 sidor sökträffar per sajt (`PAGES`), den lokala servern 3. KVD läses via deras API (`api.kvd.se`), som deras egen sida hämtar fler bilar från; auktioner som inte fått något pris än hoppas över.
-- Santander, SEB, Handelsbanken och Volkswagen Finans visar inte sin ränta på ett sätt som går att läsa ut.
+- Volkswagen Finans publicerar ingen kundränta (bara sin basränta, som får ett individuellt påslag). Santander läses från sidan om billån vid köp från privatperson och Handelsbanken från prislistan för Privatlån Direkt.
 - Räntor på bankernas sidor är oftast “från”-räntor. Den faktiska räntan sätts efter kreditprövning.
 - Räntefritt är inte kostnadsfritt: avgifter räknas in i den effektiva räntan, och en 0 %-kampanj
   ersätter ofta en prisrabatt.

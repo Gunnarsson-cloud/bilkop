@@ -38,8 +38,7 @@
       "kind": "bank",
       "url": "https://www.santanderconsumer.se/lana/billan",
       "alsoUrls": [
-        "https://www.santanderconsumer.se/lana/billan/kopa-bil-av-privatperson",
-        "https://www.santanderconsumer.se/lana/billan/kopa-bil-via-bilhandlare"
+        "https://www.santanderconsumer.se/lana/billan/kopa-bil-av-privatperson"
       ]
     },
     {
@@ -68,7 +67,7 @@
     },
     {
       "id": "handelsbanken",
-      "name": "Handelsbanken privatlån (utan säkerhet)",
+      "name": "Handelsbanken Privatlån Direkt (utan säkerhet)",
       "kind": "bank",
       "url": "https://www.handelsbanken.se/sv/privat/lan/bil-och-fritidslan",
       "alsoUrls": [
@@ -80,10 +79,7 @@
       "name": "Volkswagen Finans",
       "kind": "dealer",
       "url": "https://www.vwfs.se/privat/lana-till-bil/billan.html",
-      "alsoUrls": [
-        "https://www.vwfs.se/kopa-leasa-bil/billan/",
-        "https://www.vwfs.se/aktuell-basranta.html"
-      ]
+      "noRateNote": "Publicerar ingen kundränta: räntan är VWFS basränta plus ett individuellt påslag. Begär offert."
     },
     {
       "id": "toyotafinans",

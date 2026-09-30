@@ -86,7 +86,7 @@ export async function fetchLoanTerms({ fetchPage = politeFetch } = {}) {
   return (await Promise.all(SOURCES.loans.map(async s => {
     try {
       const rows = loanRows(s, await termsFrom(s, fetchPage));
-      if (!rows.length) throw new Error("hittade ingen ränta på sidan");
+      if (!rows.length) throw new Error(s.noRateNote ?? "hittade ingen ränta på sidan");
       return rows;
     } catch (e) {
       return [{ ...s, error: e.message }];

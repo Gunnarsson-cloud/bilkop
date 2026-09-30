@@ -106,3 +106,21 @@ test("KVD läses via API:t och bläddras med offset", async () => {
   assert.equal(car.auction, true);
   assert.equal(car.priceType, "Utgångspris");
 });
+
+test("långivare: extrasidor fyller i det som saknas", async () => {
+  const pages = {
+    "santanderconsumer.se/lana/billan/kopa-bil-av-privatperson": "<p>Räntan är rörlig och kan variera från 6,44 - 14,95 %. Den effektiva räntan kan variera från 6,63 - 16,02 %. Uppläggningsavgift 0 kr.</p>",
+    "santanderconsumer.se/lana/billan": "<p>Billån hos oss.</p>",
+    "vwfs.se/privat/lana-till-bil/billan.html": "<p>Vår rörliga ränta baseras på VWFS basränta.</p>",
+  };
+  const fetchPage = async url => {
+    const hit = Object.keys(pages).find(k => url.endsWith(k));
+    if (!hit) throw new Error("blockerad");
+    return pages[hit];
+  };
+  const r = await researchLoans({ amount: 100000, months: 36 }, { fetchPage });
+  const s = r.offers.find(o => o.id === "santander");
+  assert.equal(s.nominal, 6.44);
+  assert.equal(s.effective > 6, true);
+  assert.match(r.offers.find(o => o.id === "vwfinans").error, /basränta/);
+});
