@@ -4,8 +4,14 @@
 import { USER_AGENT, parseRobots, isAllowed } from "../server/fetcher.js";
 import { extractCars, extractLoanTerms, embeddedJson } from "../server/extract.js";
 import { SOURCES, fill } from "../server/search.js";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { gzipSync } from "node:zlib";
 
-const only = process.argv.slice(2);
+// --save <katalog> sparar hämtade sidor gzippade, så att tolkningen kan utvecklas mot riktiga sidor.
+const args = process.argv.slice(2);
+const saveIdx = args.indexOf("--save");
+const saveDir = saveIdx >= 0 ? args.splice(saveIdx, 2)[1] : null;
+const only = args;
 const pick = list => list.filter(s => !only.length || only.includes(s.id));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const SEARCH = { q: "", minPrice: 150000, maxPrice: 300000, yearFrom: "", maxMil: "" };
@@ -104,6 +110,10 @@ async function probe(kind, s, url) {
   try {
     if (!(await allowed(url))) { console.log("robots.txt: FÖRBJUDET – hämtas inte"); return { id: s.id, ok: false, why: "robots" }; }
     const r = await get(url);
+    if (saveDir) {
+      mkdirSync(saveDir, { recursive: true });
+      writeFileSync(`${saveDir}/${s.id}.html.gz`, gzipSync(r.body));
+    }
     console.log(`status ${r.status}  ${r.type}  -> ${r.url}`);
     const d = describe(r.body);
     console.log(JSON.stringify(d));

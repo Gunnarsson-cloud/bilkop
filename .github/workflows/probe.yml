@@ -8,11 +8,18 @@ on:
         description: "Käll-id separerade med mellanslag (tomt = alla)"
         required: false
         default: ""
+      save:
+        description: "Spara hämtade sidor till grenen (probe-output/)"
+        type: boolean
+        default: false
   push:
     paths:
       - "server/**"
       - "scripts/probe.js"
       - ".github/workflows/probe.yml"
+
+permissions:
+  contents: write
 
 jobs:
   probe:
@@ -24,6 +31,15 @@ jobs:
         with:
           node-version: 22
       - run: npm test
-      - run: node scripts/probe.js $SOURCES
+      - run: node scripts/probe.js $SOURCES ${SAVE:+--save probe-output}
         env:
           SOURCES: ${{ github.event.inputs.sources }}
+          SAVE: ${{ github.event.inputs.save == 'true' && '1' || '' }}
+      - name: Spara sidorna på grenen
+        if: github.event.inputs.save == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probe-output
+          git commit -m "Spara live-sidor från källorna" || exit 0
+          git push origin HEAD:${GITHUB_REF_NAME}
