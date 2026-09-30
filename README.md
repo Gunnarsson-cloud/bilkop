@@ -10,6 +10,14 @@ npm test
 
 Kräver Node 20 eller senare, inga beroenden.
 
+## Statisk sida
+Sidan fungerar även utan server. Den läser då `data/cars.json` och `data/loans.json` och filtrerar
+och räknar i webbläsaren. `node scripts/build-site.js site` hämtar aktuell data och bygger en
+sådan sida i `site/`, klar att lägga ut på valfritt webbhotell.
+
+`.github/workflows/probe.yml` provar alla källor och skriver ut vad som fungerar. Med valet
+“save” sparas sidorna i `probe-output/`, som testerna i `test/live-pages.test.js` använder.
+
 ## Delar
 
 | Del | Fil | Vad den gör |
@@ -32,9 +40,10 @@ innan en källa används. Flera annonssajter förbjuder automatisk insamling och
 API:er eller partneravtal. Källor slås av och på i `server/sources.json`.
 
 ## Kända begränsningar
-- Sök-URL:erna och banksidornas adresser i `server/sources.json` har inte kunnat provas mot de riktiga
-  sajterna, eftersom utvecklingsmiljön inte når dem. Tolkningen är testad mot exempelsidor i
-  `test/fixtures/`. Justera URL:er och parametrar när du kör mot de riktiga sajterna.
+- Varje sajt har sin egen tolkare i `server/sites.js`. Ändrar en sajt sin sidstruktur slutar den
+  fungera tills tolkaren uppdateras; kör “Prova källor live” för att se vilka som fungerar.
+- Bara första sidan med sökträffar hämtas per sajt.
+- Santander, SEB, Handelsbanken och Volkswagen Finans visar inte sin ränta på ett sätt som går att läsa ut.
 - Räntor på bankernas sidor är oftast “från”-räntor. Den faktiska räntan sätts efter kreditprövning.
 - Räntefritt är inte kostnadsfritt: avgifter räknas in i den effektiva räntan, och en 0 %-kampanj
   ersätter ofta en prisrabatt.

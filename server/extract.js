@@ -157,22 +157,80 @@ export function extractCars(html, baseUrl, source) {
   return [...uniq.values()];
 }
 
-// Plockar räntor och avgifter ur en bankssida om billån.
-export function extractLoanTerms(html) {
-  const text = html
+// Gör om HTML till ren text, inklusive teckenreferenser som &#228; och &aring;.
+export function htmlText(html) {
+  const named = { nbsp: " ", amp: "&", lt: "<", gt: ">", quot: '"', aring: "å", auml: "ä", ouml: "ö", Aring: "Å", Auml: "Ä", Ouml: "Ö", ndash: "–", mdash: "—" };
+  return html
     .replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ")
     .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&")
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(+d))
+    .replace(/&([a-z]+);/gi, (m, n) => named[n] ?? m)
     .replace(/\s+/g, " ");
-  const pct = s => parseFloat(s.replace(",", "."));
-  const krNum = s => parseInt(s.replace(/[\s .]/g, ""), 10);
-  const find = (re, conv) => { const m = text.match(re); return m ? conv(m[1]) : null; };
-  const P = "(\\d{1,2}(?:[,.]\\d{1,2})?)\\s?%";
-  const K = "(\\d{1,3}(?:[\\s\\u00a0.]?\\d{3})*|\\d+)\\s?(?:kr|:-)";
+}
+
+// Meningen/stycket runt kampanjen, avgränsad av citattecken från inbäddad JSON.
+function exampleText(text, at) {
+  const q = text.lastIndexOf('"', at);
+  const start = q >= 0 && at - q < 300 ? q + 1 : Math.max(0, at - 120);
+  const e = text.indexOf('"', at);
+  return text.slice(start, e > 0 && e - at < 700 ? e : at + 420).trim();
+}
+
+// Kampanjränta hos bilhandlarnas finansbolag, t.ex. "kampanjränta 0,00 % (ord. rörlig ränta 6,25%),
+// 30 % kontant/inbyte ... 45% garanterat återköpsvärde ... Effektiv ränta 0,33 %. ... gäller tom 2026-09-30".
+// Texten ligger ofta i sidans inbäddade JSON, så även skriptinnehåll söks igenom.
+export function findCampaign(html) {
+  const raw = html.replace(/\\u([0-9a-f]{4})/gi, (_, h) => String.fromCharCode(parseInt(h, 16))).replace(/\\n/g, " ");
+  // Klipp ut ett fönster runt ordet innan HTML rensas; skriptkod med "<" kan annars äta upp texten.
+  const at = raw.search(/kampanjränta/i);
+  if (at < 0) return null;
+  const text = htmlText(raw.slice(Math.max(0, at - 600), at + 1500).replace(/<\/?script[^>]*>/gi, " "));
+  const pct = s => (s == null ? null : parseFloat(s.replace(",", ".")));
+  const m = text.match(/kampanjränta\s*(\d{1,2}(?:[,.]\d{1,2})?)\s?%(?:\s*\(ord(?:inarie|\.)?\s*(?:rörlig\s*)?ränta\s*(\d{1,2}(?:[,.]\d{1,2})?)\s?%\))?/i);
+  if (!m) return null;
+  const sentence = text.slice(m.index, m.index + 800);
+  const until = sentence.match(/gäller\s*(?:t\.?\s?o\.?\s?m\.?|till och med|fram till)\s*(\d{4}-\d{2}-\d{2})/i)?.[1] ?? null;
   return {
-    effective: find(new RegExp(`effektiv(?:a)? ränta[^%\\d]{0,40}?(?:från\\s)?${P}`, "i"), pct),
-    nominal: find(new RegExp(`(?:nominell|rörlig|lånets|ordinarie)?\\s?ränta[^%\\d]{0,40}?(?:från\\s)?${P}`, "i"), pct),
-    setupFee: find(new RegExp(`uppläggnings(?:avgift|kostnad)[^\\d]{0,30}?${K}`, "i"), krNum),
-    monthlyFee: find(new RegExp(`(?:avi|avierings|administrations)avgift[^\\d]{0,30}?${K}`, "i"), krNum),
+    rate: pct(m[1]),
+    ordinaryRate: pct(m[2]),
+    effective: pct(sentence.match(/effektiv ränta\s*(\d{1,2}(?:[,.]\d{1,2})?)\s?%/i)?.[1]),
+    months: Number(text.slice(Math.max(0, m.index - 80), m.index).match(/(\d{2,3})\s*mån/)?.[1]) || null,
+    downPct: pct(sentence.match(/(\d{1,2})\s?%\s*(?:i\s)?kontant/i)?.[1]),
+    balloonPct: pct(sentence.match(/(\d{1,2})\s?%\s*(?:garanterat\s)?(?:återköpsvärde|restvärde|slutbetalning)/i)?.[1]),
+    validUntil: until,
+    feesExtra: /(?:uppläggnings|avi)avgift[^.]{0,20}tillkommer/i.test(sentence),
+    text: exampleText(text, m.index),
+  };
+}
+
+// Plockar räntor och avgifter ur en bankssida om billån. Varje procentsats bedöms utifrån
+// texten runt den, så att t.ex. "20 % i kontantinsats" eller "80 % av värdet" inte tas för ränta.
+// Vid intervall ("5,49 %–5,99 %") används den lägsta nivån, som banken annonserar.
+export function extractLoanTerms(html) {
+  const text = htmlText(html);
+  const nominal = [], effective = [];
+  for (const m of text.matchAll(/(\d{1,2}(?:[,.]\d{1,2})?)\s?%/g)) {
+    const v = parseFloat(m[1].replace(",", "."));
+    if (!(v > 0 && v < 30)) continue;
+    const before = text.slice(Math.max(0, m.index - 60), m.index).toLowerCase();
+    const after = text.slice(m.index + m[0].length, m.index + m[0].length + 35).toLowerCase();
+    if (/^\s*(?:i\s)?(?:kontantinsats|insats|av\s|rabatt|lägre|amorter|procent|av bilens)/.test(after)) continue;
+    if (/(?:rabatt|kontantinsats|insats på|belåna|låna upp till|minst|högst)[^%]{0,15}$/.test(before)) continue;
+    const eff = before.lastIndexOf("effektiv");
+    const sinceEff = eff >= 0 ? before.slice(eff) : "";
+    const pcts = (sinceEff.match(/%/g) ?? []).length;
+    if (eff >= 0 && (pcts === 0 || (pcts === 1 && /%\s*(?:–|-|till)\s*$/.test(sinceEff)))) effective.push(v);
+    else if (/ränta/.test(before.slice(-50)) || /^\s*(?:–|-)?\s*(?:\d{1,2}(?:[,.]\d{1,2})?\s?%\s*)?(?:i\s)?(?:ränta|rörlig|nominell)/.test(after)) nominal.push(v);
+  }
+  const krNum = s => parseInt(s.replace(/[\s.]/g, ""), 10);
+  const K = "(\\d{1,3}(?:[\\s.]?\\d{3})*|\\d+)\\s?(?:kr|:-)";
+  const find = re => { const m = text.match(re); return m ? krNum(m[1]) : null; };
+  return {
+    campaign: findCampaign(html),
+    effective: effective.length ? Math.min(...effective) : null,
+    nominal: nominal.length ? Math.min(...nominal) : null,
+    setupFee: find(new RegExp(`uppläggnings(?:avgift|kostnad)[^\\d]{0,30}?${K}`, "i")),
+    monthlyFee: find(new RegExp(`(?:avi|avierings|administrations)avgift[^\\d]{0,30}?${K}`, "i")),
   };
 }

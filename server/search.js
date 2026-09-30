@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { politeFetch } from "./fetcher.js";
 import { extractCars, extractLoanTerms } from "./extract.js";
-import { loanCost, MIN_DOWN_PCT } from "../public/loanmath.js";
+import { SITE_PARSERS } from "./sites.js";
+import { filterCars, loanRows, priceLoans } from "../public/compare.js";
 
 export const SOURCES = JSON.parse(readFileSync(new URL("./sources.json", import.meta.url), "utf8"));
 
@@ -24,59 +25,34 @@ export async function searchCars(params, { fetchPage = politeFetch } = {}) {
     const url = fill(s.search, f);
     try {
       const html = await fetchPage(url);
-      return { source: s.id, name: s.name, url, cars: extractCars(html, url, s.name) };
+      const site = SITE_PARSERS[s.id]?.(html, url, s.name) ?? [];
+      return { source: s.id, name: s.name, url, cars: site.length ? site : extractCars(html, url, s.name) };
     } catch (e) {
       return { source: s.id, name: s.name, url, error: e.message, cars: [] };
     }
   }));
 
-  // Källorna filtrerar inte alltid som vi bett om, så filtret körs även här.
-  const minP = Number(f.minPrice) || 0, maxP = Number(f.maxPrice) || Infinity;
-  const yFrom = Number(f.yearFrom) || 0, maxMil = Number(f.maxMil) || Infinity;
-  const q = f.q.toLowerCase().split(/\s+/).filter(Boolean);
-  const cars = results.flatMap(r => r.cars).filter(c =>
-    c.price >= minP && c.price <= maxP &&
-    (c.year == null || c.year >= yFrom) &&
-    (c.mileageMil == null || c.mileageMil <= maxMil) &&
-    (params.zeroRateOnly !== true || c.dealerRate === 0) &&
-    q.every(w => `${c.title} ${c.make ?? ""} ${c.model ?? ""}`.toLowerCase().includes(w)));
-  cars.sort((a, b) => a.price - b.price);
-
   return {
-    cars,
+    cars: filterCars(results.flatMap(r => r.cars), { ...f, zeroRateOnly: params.zeroRateOnly }),
     sources: results.map(({ cars: list, ...r }) => ({ ...r, found: list.length })),
   };
 }
 
+// Hämtar villkoren från alla långivare; fel per långivare blir en rad med error.
+export async function fetchLoanTerms({ fetchPage = politeFetch } = {}) {
+  return (await Promise.all(SOURCES.loans.map(async s => {
+    try {
+      const rows = loanRows(s, extractLoanTerms(await fetchPage(s.url)));
+      if (!rows.length) throw new Error("hittade ingen ränta på sidan");
+      return rows;
+    } catch (e) {
+      return [{ ...s, error: e.message }];
+    }
+  }))).flat();
+}
+
 // Hämtar aktuella villkor från långivarnas sidor och räknar ut kostnaden för det aktuella lånet.
 // Manuella erbjudanden (t.ex. en bilhandlares 0 %-kampanj) räknas på samma sätt.
-export async function researchLoans(params, { fetchPage = politeFetch } = {}) {
-  const principal = Number(params.amount) || 0;
-  const months = Number(params.months) || 36;
-  const fetched = await Promise.all(SOURCES.loans.map(async s => {
-    try {
-      const terms = extractLoanTerms(await fetchPage(s.url));
-      if (terms.nominal == null && terms.effective == null) throw new Error("hittade ingen ränta på sidan");
-      return { ...s, ...terms };
-    } catch (e) {
-      return { ...s, error: e.message };
-    }
-  }));
-
-  const offers = [...fetched, ...(params.manual ?? []).map(m => ({ kind: "manual", ...m }))].map(o => {
-    if (o.error) return o;
-    // Om bara effektiv ränta hittades används den som nominell (avgifterna ingår då redan).
-    const rate = o.nominal ?? o.effective;
-    const cost = loanCost({ principal, rate, months, setupFee: o.setupFee ?? 0, monthlyFee: o.monthlyFee ?? 0 });
-    return { ...o, rate, ...cost };
-  });
-  offers.sort((a, b) => (a.error ? 1 : 0) - (b.error ? 1 : 0) || a.total - b.total);
-
-  const price = Number(params.price) || 0;
-  const downPct = price ? (1 - principal / price) * 100 : null;
-  return {
-    principal, months, offers,
-    warnings: downPct != null && Math.round(downPct * 10) / 10 < MIN_DOWN_PCT
-      ? [`Kontantinsatsen är ${downPct.toFixed(0)} %. Billån kräver normalt minst ${MIN_DOWN_PCT} %.`] : [],
-  };
+export async function researchLoans(params, opts = {}) {
+  return priceLoans(await fetchLoanTerms(opts), params);
 }

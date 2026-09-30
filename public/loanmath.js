@@ -1,25 +1,26 @@
 // Lånematematik som delas av servern och webbsidan.
 
-// Månadsbetalning för ett annuitetslån (exklusive avgifter).
-export function annuity(principal, yearlyRatePct, months) {
+// Månadsbetalning för ett annuitetslån (exklusive avgifter). balloon är en slutbetalning
+// (restskuld) som betalas vid lånets slut, vanligt i bilhandlarnas kampanjlån.
+export function annuity(principal, yearlyRatePct, months, balloon = 0) {
   if (principal <= 0 || months <= 0) return 0;
   const r = yearlyRatePct / 100 / 12;
-  if (r === 0) return principal / months;
-  return principal * r / (1 - Math.pow(1 + r, -months));
+  if (r === 0) return (principal - balloon) / months;
+  return (principal - balloon / Math.pow(1 + r, months)) * r / (1 - Math.pow(1 + r, -months));
 }
 
 // Effektiv ränta enligt konsumentkreditlagens princip: den årsränta där
 // utbetalt belopp (minus uppläggningsavgift) är lika med nuvärdet av alla
 // månadsbetalningar inklusive aviavgifter.
-export function effectiveRate(principal, yearlyRatePct, months, setupFee = 0, monthlyFee = 0) {
+export function effectiveRate(principal, yearlyRatePct, months, setupFee = 0, monthlyFee = 0, balloon = 0) {
   if (principal <= 0 || months <= 0) return 0;
-  const pay = annuity(principal, yearlyRatePct, months) + monthlyFee;
+  const pay = annuity(principal, yearlyRatePct, months, balloon) + monthlyFee;
   const received = principal - setupFee;
   if (received <= 0) return Infinity;
   const pv = i => {
     let s = 0;
     for (let k = 1; k <= months; k++) s += pay / Math.pow(1 + i, k);
-    return s;
+    return s + balloon / Math.pow(1 + i, months);
   };
   // Bisektion på månadsräntan; nuvärdet sjunker när räntan stiger.
   let lo = 0, hi = 1;
@@ -32,16 +33,17 @@ export function effectiveRate(principal, yearlyRatePct, months, setupFee = 0, mo
 }
 
 // Hela lånekostnaden för ett erbjudande.
-export function loanCost({ principal, rate, months, setupFee = 0, monthlyFee = 0 }) {
-  const pay = annuity(principal, rate, months);
-  const interest = pay * months - principal;
+export function loanCost({ principal, rate, months, setupFee = 0, monthlyFee = 0, balloon = 0 }) {
+  const pay = annuity(principal, rate, months, balloon);
+  const interest = pay * months + balloon - principal;
   const fees = setupFee + monthlyFee * months;
   return {
     monthly: pay + monthlyFee,
     interest,
     fees,
     total: interest + fees,
-    effective: effectiveRate(principal, rate, months, setupFee, monthlyFee),
+    balloon,
+    effective: effectiveRate(principal, rate, months, setupFee, monthlyFee, balloon),
   };
 }
 

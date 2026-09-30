@@ -37,6 +37,21 @@ test("känner igen försäljarens ränteerbjudanden", () => {
 
 test("läser räntor och avgifter från en bankssida", () => {
   assert.deepEqual(extractLoanTerms(fixture("bank.html")), {
-    effective: 6.49, nominal: 5.95, setupFee: 595, monthlyFee: 45,
+    campaign: null, effective: 6.49, nominal: 5.95, setupFee: 595, monthlyFee: 45,
   });
+});
+
+test("räntor: procentsatser som inte är räntor ignoreras", () => {
+  const t = html => extractLoanTerms(`<p>${html}</p>`);
+  // Nordea-liknande text med intervall
+  assert.deepEqual(t("Du lägger 20 % i kontantinsats (pengar eller inbytesbil). 5,49 %–5,99 % i ränta (effektiv ränta 6,65 %–7,18 %)*. Köper du elbil får du 0,5 % rabatt på räntan. Uppläggningsavgift 525 kr, aviavgift 35 kr."),
+    { campaign: null, nominal: 5.49, effective: 6.65, setupFee: 525, monthlyFee: 35 });
+  // Swedbank-liknande: 80 % av värdet är ingen ränta
+  assert.equal(t("Låna upp till 80 % av bilens värde. Räntan är avdragsgill.").nominal, null);
+  assert.equal(t("Köp ny bil – låna 80 % av värdet").nominal, null);
+  // Toyota-liknande
+  assert.equal(t("beräknas utifrån skulden och räntan. Du betalar minst 20 % i kontantinsats").nominal, null);
+  // Ikano med teckenreferenser
+  assert.deepEqual(t("Individuell r&#228;nta mellan 6,22 % och 18,87 % … 6,22 % Vår lägsta ränta just nu Effektiv ränta: 6,49 % 18,87 % Vår högsta ränta just nu Effektiv ränta: 20,48 %"),
+    { campaign: null, nominal: 6.22, effective: 6.49, setupFee: null, monthlyFee: null });
 });

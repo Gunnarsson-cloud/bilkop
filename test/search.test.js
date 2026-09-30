@@ -41,3 +41,16 @@ test("lånejämförelse räknar bank- och försäljarerbjudanden", async () => {
   const low = await researchLoans({ amount: 180000, months: 36, price: 200000 }, { fetchPage });
   assert.equal(low.warnings.length, 1);
 });
+
+test("kampanjlån med slutbetalning blir en egen rad", async () => {
+  const campaignPage = `<script>x={"t":"exempel med Easy Billån, 36 månader, kampanjränta 0,00\\u0026nbsp;% (ord. rörlig ränta 6,25%),  30\\u0026nbsp;% kontant/inbyte, 45% garanterat återköpsvärde. Effektiv ränta 0,33 %. Uppläggningsavgift och aviavgift tillkommer. Kampanjränta 0,00 % gäller tom 2099-12-31."}</script>`;
+  const fetchPage = async url => url.includes("toyota") ? campaignPage : Promise.reject(new Error("blockerad"));
+  const r = await researchLoans({ amount: 140000, months: 36, price: 200000 }, { fetchPage });
+  const camp = r.offers.find(o => o.kind === "campaign");
+  const ord = r.offers.find(o => o.id === "toyotafinans");
+  assert.equal(camp.rate, 0);
+  assert.equal(camp.balloon, 90000);           // 45 % av 200 000
+  assert.equal(camp.interest, 0);
+  assert.equal(ord.rate, 6.25);
+  assert.ok(Math.abs(camp.monthly - 50000 / 36) < 0.01);
+});

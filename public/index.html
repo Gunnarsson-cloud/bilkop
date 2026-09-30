@@ -83,6 +83,7 @@
   .car .meta { color:var(--muted); font-size:.85rem; }
   .car .price { font-weight:700; font-size:1.1rem; font-variant-numeric:tabular-nums; }
   .car .acts { display:flex; flex-wrap:wrap; gap:6px; margin-top:auto; padding-top:6px; }
+  .badge.warn { border-color:var(--c-fin); color:var(--c-fin); }
   .badge { display:inline-block; font-size:.72rem; border-radius:99px; padding:1px 8px; border:1px solid var(--good); color:var(--good); }
   .sub { color:var(--muted); font-size:.88rem; margin:-6px 0 12px; }
   .manual { margin-top:12px; }
@@ -102,7 +103,7 @@
 
   <div class="card" id="search">
     <h2>Hitta bilar</h2>
-    <p class="sub">Söker i Blocket, Bytbil, Wayke och KVD. Välj en bil för att räkna på den i kalkylen nedan. Annonser som nämner räntefri finansiering märks med “0 % ränta”.</p>
+    <p class="sub">Bilar från Blocket, Bytbil, Wayke och KVD. Välj en bil för att räkna på den i kalkylen nedan. Annonser som nämner räntefri finansiering märks med “0 % ränta”.</p>
     <form id="carForm" class="toolbar">
       <label class="f">Märke/modell <input type="text" name="q" placeholder="t.ex. Volvo V60"></label>
       <label class="f">Pris från <span class="u">kr</span><input type="number" name="minPrice" value="150000" min="0" step="5000"></label>
@@ -131,7 +132,7 @@
     <div class="toolbar">
       <label class="f">Lån till <select id="loanFor" style="width:100%;margin-top:3px;padding:8px;font:inherit;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px">
         <option value="buyUsed">Köpa begagnad bil</option><option value="buyNew">Köpa ny bil</option></select></label>
-      <button type="button" id="loanBtn">Hämta aktuella räntor</button>
+      <button type="button" id="loanBtn">Jämför lån</button>
     </div>
     <fieldset class="manual"><legend>Försäljarens erbjudande (fyll i från offerten)</legend>
       <div class="toolbar">
@@ -158,6 +159,7 @@
 
 <script type="module">
 import { loanCost, MIN_DOWN_PCT } from "./loanmath.js";
+import { filterCars, priceLoans } from "./compare.js";
 
 const fmt = new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 0 });
 const kr = n => fmt.format(Math.round(n)).replace(/−/g, "-") + " kr";
@@ -338,12 +340,41 @@ function onInput(e) {
   render();
 }
 
-// ---- Bilsök och billån (kräver servern: npm start) ----
+// ---- Bilsök och billån ----
+// Med servern (npm start) hämtas allt live via api/. På den publicerade sidan (GitHub Pages)
+// finns ingen server; då används data/*.json som GitHub Actions hämtar flera gånger per dag.
 const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const safeUrl = u => (/^https?:\/\//i.test(u ?? "") ? u : "#");
 const pctFmt = v => (v == null || !isFinite(v) ? "–" : v.toFixed(2).replace(".", ",") + " %");
-const NO_SERVER = "Sökningen kräver servern. Starta den med <code>npm start</code> och öppna http://localhost:3000.";
+const when = iso => new Date(iso).toLocaleString("sv-SE", { dateStyle: "medium", timeStyle: "short" });
+const SOURCE_NAMES = { blocket: "Blocket", bytbil: "Bytbil", wayke: "Wayke", kvd: "KVD" };
 let cars = [];
+
+const staticData = {};
+async function loadStatic(name) {
+  staticData[name] ??= fetch(`data/${name}.json`).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+  return staticData[name];
+}
+
+// Försöker med servern först, annars med förhämtad data.
+async function getCars(params) {
+  try {
+    const r = await fetch("api/cars?" + params);
+    if (r.ok && r.headers.get("content-type")?.includes("json")) return { live: true, ...(await r.json()) };
+  } catch { /* ingen server */ }
+  const d = await loadStatic("cars");
+  return { live: false, fetchedAt: d.fetchedAt, sources: d.sources, cars: filterCars(d.cars, Object.fromEntries(params)) };
+}
+
+async function getLoans(req) {
+  const body = { ...req, manual: [manualOffer()] };
+  try {
+    const r = await fetch("api/loans", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (r.ok && r.headers.get("content-type")?.includes("json")) return { live: true, ...(await r.json()) };
+  } catch { /* ingen server */ }
+  const d = await loadStatic("loans");
+  return { live: false, fetchedAt: d.fetchedAt, ...priceLoans(d.rows, body) };
+}
 
 function setField(scope, k, v) {
   state[scope][k] = v;
@@ -363,35 +394,37 @@ function useCar(i, scope) {
 
 function renderCars() {
   $("#carList").innerHTML = cars.map((c, i) => `<div class="car">
-    ${c.image ? `<img src="${esc(safeUrl(c.image))}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}
+    ${c.image ? `<img src="${esc(safeUrl(c.image))}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}
     <div class="body">
       <div class="t"><a href="${esc(safeUrl(c.url))}" target="_blank" rel="noopener noreferrer">${esc(c.title)}</a></div>
-      <div class="meta">${[c.year, c.mileageMil != null ? fmt.format(c.mileageMil) + " mil" : null, c.fuel, c.source].filter(Boolean).map(esc).join(" · ")}</div>
-      <div class="price">${kr(c.price)}</div>
-      ${c.dealerRate != null ? `<div><span class="badge">${esc(pctFmt(c.dealerRate))} ränta</span></div>` : ""}
+      <div class="meta">${[c.year, c.mileageMil != null ? fmt.format(c.mileageMil) + " mil" : null, c.fuel].filter(Boolean).map(esc).join(" · ")}</div>
+      <div class="meta">${esc(SOURCE_NAMES[c.source] ?? c.source)}${c.seller ? " · " + esc(c.seller) : ""}${(c.alsoOn ?? []).map(a =>
+        ` · även på <a href="${esc(safeUrl(a.url))}" target="_blank" rel="noopener noreferrer">${esc(SOURCE_NAMES[a.source] ?? a.source)}</a>`).join("")}</div>
+      <div class="price">${kr(c.price)}${c.priceType && c.priceType !== "Fast pris" ? ` <small class="meta">${esc(c.priceType)}</small>` : ""}</div>
+      <div>${c.auction ? `<span class="badge warn">Auktion</span> ` : ""}${c.dealerRate != null ? `<span class="badge">${esc(pctFmt(c.dealerRate))} ränta</span>` : ""}</div>
       <div class="acts"><button class="ghost" data-car="${i}" data-to="buyUsed">Räkna som begagnad</button>
         <button class="ghost" data-car="${i}" data-to="buyNew">Räkna som ny</button></div>
     </div></div>`).join("");
 }
 
-$("#carForm").addEventListener("submit", async e => {
-  e.preventDefault();
-  const fd = new FormData(e.target), params = new URLSearchParams();
+async function searchCarsUI() {
+  const form = $("#carForm"), fd = new FormData(form), params = new URLSearchParams();
   for (const [k, v] of fd) if (v !== "") params.set(k, v);
-  const btn = e.target.querySelector("button"); btn.disabled = true;
-  $("#carStatus").textContent = "Söker … (servern väntar mellan anrop till varje sajt, så det kan ta några sekunder)";
+  const btn = form.querySelector("button"); btn.disabled = true;
+  $("#carStatus").textContent = "Söker …";
   try {
-    const r = await fetch("/api/cars?" + params);
-    if (!r.ok) throw new Error(r.status);
-    const data = await r.json();
+    const data = await getCars(params);
     cars = data.cars;
     renderCars();
-    $("#carStatus").innerHTML = `${cars.length} bilar hittades. ` + data.sources.map(s =>
-      s.error ? `<span class="err">${esc(s.name)}: ${esc(s.error)}</span>` : `${esc(s.name)}: ${s.found}`).join(" · ");
+    $("#carStatus").innerHTML = `${cars.length} bilar matchar. ` +
+      (data.live ? "Hämtat nu från " : `Annonser hämtade ${esc(when(data.fetchedAt))} från `) +
+      data.sources.map(s => s.error ? `<span class="err">${esc(s.name)} (fel: ${esc(s.error)})</span>` : `${esc(s.name)} (${s.found})`).join(", ") + ".";
   } catch {
-    $("#carStatus").innerHTML = NO_SERVER;
+    $("#carStatus").innerHTML = `<span class="err">Kunde inte hämta bilar just nu.</span>`;
   } finally { btn.disabled = false; }
-});
+}
+
+$("#carForm").addEventListener("submit", e => { e.preventDefault(); searchCarsUI(); });
 
 $("#carList").addEventListener("click", e => {
   const b = e.target.closest("button[data-car]");
@@ -409,21 +442,30 @@ function loanRequest() {
   return { scope, amount: Math.round(p.price * (1 - p.down / 100)), price: p.price, months: state.shared.months };
 }
 
+function campaignNote(c) {
+  if (!c) return "";
+  return [c.months && `${c.months} mån`, c.downPct && `kräver ${c.downPct} % kontant`,
+    c.balloonPct && `${c.balloonPct} % slutbetalning`, c.validUntil && `gäller t.o.m. ${c.validUntil}`,
+    c.effective != null && `annonserad effektiv ränta ${pctFmt(c.effective)}`, c.feesExtra && "avgifter tillkommer"].filter(Boolean).join(" · ");
+}
+
 let loanOffers = [];
 function renderLoans(req, offers, warnings = []) {
   loanOffers = offers;
-  const kind = { bank: "Bank", dealer: "Finansbolag", manual: "Försäljaren" };
+  const kind = { bank: "Bank", dealer: "Finansbolag", manual: "Försäljaren", campaign: "Kampanj" };
   $("#loanTable").innerHTML = `<table><thead><tr><th>Långivare</th><th>Ränta</th><th>Effektiv ränta</th>
     <th>Per månad</th><th>Lånekostnad totalt</th><th></th></tr></thead><tbody>` +
     offers.map((o, i) => o.error
       ? `<tr><td>${esc(o.name)}<span class="src">${esc(kind[o.kind] ?? "")}</span></td><td colspan="5" style="text-align:left;color:var(--muted)">${esc(o.error)}</td></tr>`
-      : `<tr><td>${o.url ? `<a href="${esc(safeUrl(o.url))}" target="_blank" rel="noopener noreferrer">${esc(o.name)}</a>` : esc(o.name)}
-          <span class="src">${esc(kind[o.kind] ?? "")}${o.setupFee || o.monthlyFee ? ` · ${kr(o.setupFee ?? 0)} + ${kr(o.monthlyFee ?? 0)}/mån` : ""}</span></td>
-        <td>${pctFmt(o.rate)}${o.nominal == null ? "*" : ""}</td><td>${pctFmt(o.effective)}</td><td>${kr(o.monthly)}</td><td>${kr(o.total)}</td>
+      : `<tr${o.campaign ? ` title="${esc(o.campaign.text)}"` : ""}><td>${o.url ? `<a href="${esc(safeUrl(o.url))}" target="_blank" rel="noopener noreferrer">${esc(o.name)}</a>` : esc(o.name)}
+          <span class="src">${esc(kind[o.kind] ?? "")}${o.setupFee || o.monthlyFee ? ` · ${kr(o.setupFee ?? 0)} + ${kr(o.monthlyFee ?? 0)}/mån` : ""}${o.campaign ? " · " + esc(campaignNote(o.campaign)) : ""}</span></td>
+        <td>${pctFmt(o.rate)}${o.nominal == null ? "*" : ""}</td><td>${pctFmt(o.effective)}</td>
+        <td>${kr(o.monthly)}${o.balloon ? `<span class="src">+ ${kr(o.balloon)} vid slutet</span>` : ""}</td><td>${kr(o.total)}</td>
         <td><button class="ghost" data-loan="${i}">Använd</button></td></tr>`).join("") +
     `</tbody></table>` +
     `<p class="status">Lån på ${kr(req.amount)} över ${req.months} månader. Räntor från bankernas sidor är ofta “från”-räntor; din faktiska ränta sätts efter kreditprövning.
-     ${offers.some(o => !o.error && o.nominal == null) ? " * Bara effektiv ränta hittades och används som ränta." : ""}</p>` +
+     ${offers.some(o => !o.error && o.nominal == null) ? " * Bara effektiv ränta hittades och används som ränta." : ""}
+     ${offers.some(o => o.balloon) ? " Kampanjlån med slutbetalning har låg månadskostnad men lämnar en restskuld som betalas, eller löses genom att bilen lämnas tillbaka, när lånet tar slut. Lånekostnaden räknas utan avgifter som inte står på sidan." : ""}</p>` +
     warnings.map(w => `<p class="status err">${esc(w)}</p>`).join("");
 }
 
@@ -437,28 +479,28 @@ $("#loanTable").addEventListener("click", e => {
   render();
 });
 
-$("#loanBtn").addEventListener("click", async () => {
+async function loansUI() {
   const req = loanRequest(), btn = $("#loanBtn"); btn.disabled = true;
   $("#loanStatus").textContent = "Hämtar räntor …";
   try {
-    const r = await fetch("/api/loans", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...req, manual: [manualOffer()] }) });
-    if (!r.ok) throw new Error(r.status);
-    const data = await r.json();
-    $("#loanStatus").textContent = "";
+    const data = await getLoans(req);
+    $("#loanStatus").textContent = data.live ? "" : `Villkor hämtade ${when(data.fetchedAt)}.`;
     renderLoans(req, data.offers, data.warnings);
   } catch {
-    // Utan server räknas åtminstone försäljarens erbjudande lokalt.
-    const m = manualOffer();
-    renderLoans(req, [{ ...m, rate: m.nominal, ...loanCost({ principal: req.amount, rate: m.nominal, months: req.months, setupFee: m.setupFee, monthlyFee: m.monthlyFee }) }]);
-    $("#loanStatus").innerHTML = NO_SERVER + " Nedan räknas bara försäljarens erbjudande.";
+    // Varken server eller förhämtad data: räkna åtminstone på försäljarens erbjudande.
+    renderLoans(req, priceLoans([], { ...req, manual: [manualOffer()] }).offers);
+    $("#loanStatus").innerHTML = `<span class="err">Kunde inte hämta bankernas räntor just nu.</span> Nedan räknas bara försäljarens erbjudande.`;
   } finally { btn.disabled = false; }
-});
+}
+$("#loanBtn").addEventListener("click", loansUI);
 
 build();
 document.addEventListener("input", onInput);
 document.addEventListener("change", onInput);
 render();
+// Visa bilar och räntor direkt när sidan öppnas.
+searchCarsUI();
+loansUI();
 </script>
 </body>
 </html>
