@@ -40,6 +40,22 @@ function describe(html) {
   return { title, bytes: html.length, ldTypes, scripts: [...new Set(scripts)].slice(0, 12), priceKeys };
 }
 
+// Visar var på sidan annonsdatan ligger: JSON-block, inline-skript och HTML runt första priset.
+function deep(html) {
+  const out = [];
+  for (const m of html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/gi)) {
+    const attrs = m[1].trim().replace(/\s+/g, " ").slice(0, 70), body = m[2];
+    const i = body.search(/"(?:price|Price|priceValue)"\s*:/);
+    if (i < 0 || body.length < 200) continue;
+    out.push(`SCRIPT [${attrs}] ${body.length} B, början: ${body.slice(0, 90).replace(/\s+/g, " ")}`);
+    out.push(`   runt pris: ${body.slice(Math.max(0, i - 500), i + 250).replace(/\s+/g, " ")}`);
+    if (out.length >= 10) break;
+  }
+  const t = html.search(/\d{2,3}[\s\u00a0]\d{3}(?:&nbsp;|[\s\u00a0])?kr/);
+  if (t > 0) out.push(`HTML runt första pris: ${html.slice(Math.max(0, t - 1500), t + 300).replace(/\s+/g, " ")}`);
+  return out;
+}
+
 function searchLinks(html, base) {
   const out = new Set();
   for (const m of html.matchAll(/(?:href|action)="([^"#]+)"/gi)) {
@@ -69,10 +85,19 @@ async function probe(kind, s, url) {
       console.log(`bilar hittade: ${cars.length}`);
       for (const c of cars.slice(0, 3)) console.log("  ", JSON.stringify(c));
       if (!cars.length) {
+        for (const line of deep(r.body)) console.log(line);
         const home = await get(new URL(url).origin + "/");
         console.log("sökrelaterade länkar på startsidan:", JSON.stringify(searchLinks(home.body, home.url)));
       }
       return { id: s.id, ok: r.status === 200 && cars.length > 0, found: cars.length, status: r.status };
+    }
+    if (r.status === 404) {
+      const home = await get(new URL(url).origin + "/");
+      const links = new Set();
+      for (const m of home.body.matchAll(/href="([^"#]*bill[aå]n[^"#]*)"/gi)) {
+        try { links.add(new URL(m[1].replace(/&amp;/g, "&"), home.url).href); } catch { /* ogiltig länk */ }
+      }
+      console.log("billånslänkar på startsidan:", JSON.stringify([...links].slice(0, 8)));
     }
     const terms = extractLoanTerms(r.body);
     console.log("villkor:", JSON.stringify(terms));
