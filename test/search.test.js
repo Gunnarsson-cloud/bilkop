@@ -73,3 +73,36 @@ test("bilsök bläddrar tills en sida inte ger nya annonser", async () => {
   assert.equal(asked.filter(u => u.includes("wayke")).length, 4);
   assert.ok(asked.some(u => u.includes("wayke") && u.includes("page=2")));
 });
+
+test("KVD läses via API:t och bläddras med offset", async () => {
+  const auction = (id, price, extra = {}) => ({
+    id: String(id), auctionType: "BIDDING", buyNowAmount: price, slug: `bil-${id}`,
+    auctionUrl: `https://www.kvd.se/auktioner/bil-${id}`,
+    previewImages: [{ uri: `https://kvdbil-images.imgix.net/${id}/a.jpg` }],
+    processObject: { vehicleType: "CAR", isFixedPrice: false, locationInfo: { facility: { city: "Umeå" } },
+      properties: { title: `Volvo XC40 D4 ${id}`, brand: "Volvo", familyName: "XC40", modelYear: 2020,
+        odometerReading: 210560, odometerUnit: "km", fuels: [{ fuelCode: "Diesel" }] }, ...extra },
+  });
+  const asked = [];
+  const fetchPage = async url => {
+    if (!url.includes("api.kvd.se")) throw new Error("blockerad");
+    asked.push(url);
+    const offset = Number(new URL(url).searchParams.get("offset") ?? 0);
+    if (offset >= 100) return JSON.stringify({ auctions: [], hits: 0, total: 100 });
+    return JSON.stringify({ auctions: [
+      auction(offset + 1, 251000),
+      auction(offset + 2, null),                                    // ingen pris än: hoppas över
+      auction(offset + 3, 90000, { vehicleType: "LIGHT_TRANSPORT" }), // skåpbil: hoppas över
+    ] });
+  };
+  const r = await searchCars({ pages: "5" }, { fetchPage });
+  const kvd = r.sources.find(s => s.source === "kvd");
+  assert.equal(kvd.found, 2);
+  assert.equal(kvd.pages, 2);
+  assert.deepEqual(asked.map(u => new URL(u).searchParams.get("offset")), [null, "50", "100"]);
+  const car = r.cars.find(c => c.source === "KVD");
+  assert.equal(car.mileageMil, 21056);
+  assert.equal(car.fuel, "Diesel");
+  assert.equal(car.auction, true);
+  assert.equal(car.priceType, "Utgångspris");
+});

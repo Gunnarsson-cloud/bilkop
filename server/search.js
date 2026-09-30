@@ -14,10 +14,11 @@ export const fill = (tpl, params) =>
 const MAX_PAGES = 20;
 
 // Sökadressen för sida nr page, eller null om källan saknar sidparameter.
-export function withPage(url, param, page) {
+// Med pageSize är parametern en offset (antal annonser att hoppa över) i stället för ett sidnummer.
+export function withPage(url, param, page, pageSize) {
   if (!param) return null;
   const u = new URL(url);
-  u.searchParams.set(param, String(page));
+  u.searchParams.set(param, String(pageSize ? (page - 1) * pageSize : page));
   return u.href;
 }
 
@@ -38,7 +39,7 @@ export async function searchCars(params, { fetchPage = politeFetch } = {}) {
     const cars = [], seen = new Set();
     let pages = 0;
     for (let page = 1; page <= maxPages; page++) {
-      const pageUrl = page === 1 ? url : withPage(url, s.pageParam, page);
+      const pageUrl = page === 1 ? url : withPage(url, s.pageParam, page, s.pageSize);
       if (!pageUrl) break;
       try {
         const html = await fetchPage(pageUrl);

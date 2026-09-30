@@ -29,8 +29,34 @@ function bytbil(html, base, source) {
   }).filter(Boolean);
 }
 
+// KVD via deras API (api.kvd.se/v1/auction/search), som sidan själv laddar fler bilar från.
+const KVD_FUEL = { Petrol: "Bensin", Diesel: "Diesel", Electric: "El", Ethanol: "Etanol", Gas: "Gas", Hydrogen: "Vätgas" };
+function kvdApi(json, base, source) {
+  let data;
+  try { data = JSON.parse(json); } catch { return []; }
+  return (data.auctions ?? []).map(a => {
+    const po = a.processObject ?? {}, pr = po.properties ?? {};
+    const price = Number(a.buyNowAmount ?? po.buyNowAmount ?? a.preliminaryPrice ?? a.winningBid?.amount);
+    if ((po.vehicleType ?? po.objectType) !== "CAR" || !(price > 0)) return null;
+    const fuels = (pr.fuels ?? []).map(f => f.fuelCode);
+    const fuel = /plug-in/i.test(pr.electricType ?? "") ? "Laddhybrid"
+      : fuels.length > 1 ? `${KVD_FUEL[fuels[0]] ?? fuels[0]}+El` : KVD_FUEL[fuels[0]] ?? fuels[0] ?? null;
+    return {
+      title: pr.title ?? po.title ?? [pr.heading1, pr.heading2].filter(Boolean).join(" "),
+      make: pr.brand ?? po.brand ?? null, model: pr.familyName ?? po.familyName ?? null, price,
+      priceType: po.isFixedPrice ? "Fast pris" : "Utgångspris", auction: !po.isFixedPrice,
+      year: pr.modelYear ?? (Number(po.baseObject?.year) || null),
+      mileageMil: pr.odometerReading != null ? toMil(pr.odometerReading, pr.odometerUnit ?? "km") : null,
+      fuel, condition: "used", seller: po.locationInfo?.facility?.city ? `KVD ${po.locationInfo.facility.city}` : null,
+      dealerRate: null, image: a.previewImages?.[0]?.uri ?? null,
+      url: a.auctionUrl ?? abs(`/auktioner/${a.slug}-${a.id}`, "https://www.kvd.se/"), source,
+    };
+  }).filter(Boolean);
+}
+
 // KVD: <a data-testid="product-card" href=...> med Title, Subtitle, Properties (år, mil, bränsle) och pris.
 function kvd(html, base, source) {
+  if (html.trimStart().startsWith("{")) return kvdApi(html, base, source);
   return blocks(html, /<a data-testid="product-card"/g).map(b => {
     const href = b.match(/href="([^"]+)"/)?.[1];
     const title = text(b.match(/class="Title__Container[^"]*"[^>]*>([\s\S]*?)<\/p>/)?.[1]);

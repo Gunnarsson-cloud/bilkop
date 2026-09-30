@@ -1,5 +1,5 @@
 {
-  "_info": "Källor som servern söker i. {q}, {minPrice}, {maxPrice}, {yearFrom} och {maxMil} ersätts med sökvärden. Kontrollera respektive sajts villkor innan en källa aktiveras; servern följer robots.txt men det ersätter inte villkoren. pageParam är URL-parametern för sidnummer i sökresultatet.",
+  "_info": "Källor som servern söker i. {q}, {minPrice}, {maxPrice}, {yearFrom} och {maxMil} ersätts med sökvärden. Kontrollera respektive sajts villkor innan en källa aktiveras; servern följer robots.txt men det ersätter inte villkoren. pageParam är URL-parametern för sidnummer i sökresultatet; med pageSize räknas den som offset ((sida-1)*pageSize).",
   "cars": [
     {
       "id": "blocket",
@@ -26,8 +26,9 @@
       "id": "kvd",
       "name": "KVD",
       "enabled": true,
-      "search": "https://www.kvd.se/begagnade-bilar?q={q}",
-      "pageParam": "page"
+      "search": "https://api.kvd.se/v1/auction/search?limit=50&vehicleType=car",
+      "pageParam": "offset",
+      "pageSize": 50
     }
   ],
   "loans": [
