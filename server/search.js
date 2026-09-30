@@ -11,6 +11,16 @@ export const fill = (tpl, params) =>
      // Ta bort tomma query-parametrar så att sajterna inte får konstiga filter.
      .replace(/([?&])[^=&]+=(?=&|$)/g, "$1").replace(/[?&]+$/, "").replace(/&{2,}/g, "&").replace("?&", "?");
 
+const MAX_PAGES = 10;
+
+// Sökadressen för sida nr page, eller null om källan saknar sidparameter.
+export function withPage(url, param, page) {
+  if (!param) return null;
+  const u = new URL(url);
+  u.searchParams.set(param, String(page));
+  return u.href;
+}
+
 // Söker i alla aktiva källor parallellt. Fel per källa rapporteras men stoppar inte övriga.
 export async function searchCars(params, { fetchPage = politeFetch } = {}) {
   const f = {
@@ -20,16 +30,32 @@ export async function searchCars(params, { fetchPage = politeFetch } = {}) {
     yearFrom: params.yearFrom ?? "",
     maxMil: params.maxMil ?? "",
   };
+  const maxPages = Math.max(1, Math.min(Number(params.pages) || 1, MAX_PAGES));
   const sources = SOURCES.cars.filter(s => s.enabled && (!params.sources || params.sources.includes(s.id)));
+  // Sajterna hämtas parallellt, sidorna inom en sajt i tur och ordning (fetchern håller takten per värd).
   const results = await Promise.all(sources.map(async s => {
     const url = fill(s.search, f);
-    try {
-      const html = await fetchPage(url);
-      const site = SITE_PARSERS[s.id]?.(html, url, s.name) ?? [];
-      return { source: s.id, name: s.name, url, cars: site.length ? site : extractCars(html, url, s.name) };
-    } catch (e) {
-      return { source: s.id, name: s.name, url, error: e.message, cars: [] };
+    const cars = [], seen = new Set();
+    let pages = 0;
+    for (let page = 1; page <= maxPages; page++) {
+      const pageUrl = page === 1 ? url : withPage(url, s.pageParam, page);
+      if (!pageUrl) break;
+      try {
+        const html = await fetchPage(pageUrl);
+        const site = SITE_PARSERS[s.id]?.(html, pageUrl, s.name) ?? [];
+        const found = site.length ? site : extractCars(html, pageUrl, s.name);
+        // Sajter som inte bläddrar via URL:en visar samma annonser igen; sluta då.
+        const fresh = found.filter(c => !seen.has(c.url) && seen.add(c.url));
+        if (!fresh.length) break;
+        cars.push(...fresh);
+        pages = page;
+      } catch (e) {
+        // Fel på en senare sida: behåll det som redan hämtats.
+        if (page === 1) return { source: s.id, name: s.name, url, error: e.message, cars: [], pages: 0 };
+        break;
+      }
     }
+    return { source: s.id, name: s.name, url, cars, pages };
   }));
 
   return {

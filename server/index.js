@@ -29,6 +29,7 @@ const server = createServer(async (req, res) => {
       const p = Object.fromEntries(url.searchParams);
       if (p.sources) p.sources = p.sources.split(",");
       p.zeroRateOnly = p.zeroRateOnly === "1";
+      p.pages ??= "3";
       return json(res, 200, await searchCars(p));
     }
     if (url.pathname === "/api/loans" && req.method === "POST") {

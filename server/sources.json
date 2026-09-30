@@ -1,29 +1,33 @@
 {
-  "_info": "Källor som servern söker i. {q}, {minPrice}, {maxPrice}, {yearFrom} och {maxMil} ersätts med sökvärden. Kontrollera respektive sajts villkor innan en källa aktiveras; servern följer robots.txt men det ersätter inte villkoren.",
+  "_info": "Källor som servern söker i. {q}, {minPrice}, {maxPrice}, {yearFrom} och {maxMil} ersätts med sökvärden. Kontrollera respektive sajts villkor innan en källa aktiveras; servern följer robots.txt men det ersätter inte villkoren. pageParam är URL-parametern för sidnummer i sökresultatet.",
   "cars": [
     {
       "id": "blocket",
       "name": "Blocket",
       "enabled": true,
-      "search": "https://www.blocket.se/mobility/search/car?q={q}&price_from={minPrice}&price_to={maxPrice}&year_from={yearFrom}&mileage_to={maxMil}"
+      "search": "https://www.blocket.se/mobility/search/car?q={q}&price_from={minPrice}&price_to={maxPrice}&year_from={yearFrom}&mileage_to={maxMil}",
+      "pageParam": "page"
     },
     {
       "id": "bytbil",
       "name": "Bytbil",
       "enabled": true,
-      "search": "https://www.bytbil.com/bil?FreeText={q}&PriceRange.From={minPrice}&PriceRange.To={maxPrice}&ModelYearRange.From={yearFrom}&MilageRange.To={maxMil}"
+      "search": "https://www.bytbil.com/bil?FreeText={q}&PriceRange.From={minPrice}&PriceRange.To={maxPrice}&ModelYearRange.From={yearFrom}&MilageRange.To={maxMil}",
+      "pageParam": "Page"
     },
     {
       "id": "wayke",
       "name": "Wayke",
       "enabled": true,
-      "search": "https://www.wayke.se/sok?query={q}&price.min={minPrice}&price.max={maxPrice}&modelYear.min={yearFrom}&mileage.max={maxMil}"
+      "search": "https://www.wayke.se/sok?query={q}&price.min={minPrice}&price.max={maxPrice}&modelYear.min={yearFrom}&mileage.max={maxMil}",
+      "pageParam": "page"
     },
     {
       "id": "kvd",
       "name": "KVD",
       "enabled": true,
-      "search": "https://www.kvd.se/begagnade-bilar?q={q}"
+      "search": "https://www.kvd.se/begagnade-bilar?q={q}",
+      "pageParam": "page"
     }
   ],
   "loans": [

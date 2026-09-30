@@ -54,3 +54,22 @@ test("kampanjlån med slutbetalning blir en egen rad", async () => {
   assert.equal(ord.rate, 6.25);
   assert.ok(Math.abs(camp.monthly - 50000 / 36) < 0.01);
 });
+
+test("bilsök bläddrar tills en sida inte ger nya annonser", async () => {
+  const listing = n => `<script type="application/ld+json">${JSON.stringify({ "@type": "ItemList", itemListElement:
+    Array.from({ length: 3 }, (_, i) => ({ item: { "@type": "Car", name: `Bil ${n}-${i}`, vehicleModelDate: "2020",
+      offers: { price: 150000 + n * 1000 + i }, url: `/annons/${n}-${i}` } })) })}</script>`;
+  const asked = [];
+  const fetchPage = async url => {
+    asked.push(url);
+    if (!url.includes("wayke")) throw new Error("blockerad");
+    const page = Number(new URL(url).searchParams.get("page") ?? 1);
+    return listing(Math.min(page, 3));   // sida 4 visar samma som sida 3
+  };
+  const r = await searchCars({ pages: "6" }, { fetchPage });
+  const wayke = r.sources.find(s => s.source === "wayke");
+  assert.equal(wayke.pages, 3);
+  assert.equal(wayke.found, 9);
+  assert.equal(asked.filter(u => u.includes("wayke")).length, 4);
+  assert.ok(asked.some(u => u.includes("wayke") && u.includes("page=2")));
+});
