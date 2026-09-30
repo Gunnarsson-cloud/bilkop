@@ -48,7 +48,7 @@ API:er eller partneravtal. Källor slås av och på i `server/sources.json`.
 ## Kända begränsningar
 - Varje sajt har sin egen tolkare i `server/sites.js`. Ändrar en sajt sin sidstruktur slutar den
   fungera tills tolkaren uppdateras; kör “Prova källor live” för att se vilka som fungerar.
-- Den publicerade sidan hämtar upp till 8 sidor sökträffar per sajt (`PAGES`), den lokala servern 3. KVD laddar fler bilar med JavaScript och ger därför bara första sidan.
+- Den publicerade sidan hämtar upp till 15 sidor sökträffar per sajt (`PAGES`), den lokala servern 3. KVD laddar fler bilar med JavaScript och ger därför bara första sidan.
 - Santander, SEB, Handelsbanken och Volkswagen Finans visar inte sin ränta på ett sätt som går att läsa ut.
 - Räntor på bankernas sidor är oftast “från”-räntor. Den faktiska räntan sätts efter kreditprövning.
 - Räntefritt är inte kostnadsfritt: avgifter räknas in i den effektiva räntan, och en 0 %-kampanj

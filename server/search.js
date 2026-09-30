@@ -11,7 +11,7 @@ export const fill = (tpl, params) =>
      // Ta bort tomma query-parametrar så att sajterna inte får konstiga filter.
      .replace(/([?&])[^=&]+=(?=&|$)/g, "$1").replace(/[?&]+$/, "").replace(/&{2,}/g, "&").replace("?&", "?");
 
-const MAX_PAGES = 10;
+const MAX_PAGES = 20;
 
 // Sökadressen för sida nr page, eller null om källan saknar sidparameter.
 export function withPage(url, param, page) {
