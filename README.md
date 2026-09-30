@@ -29,7 +29,7 @@ Lokalt: `node scripts/probe.js --save probe-output`.
 | Del | Fil | Vad den gör |
 |---|---|---|
 | Kalkylator | `public/index.html` | Total kostnad över perioden för fyra alternativ: värdeminskning, ränta och låneavgifter, utebliven avkastning, löpande kostnader, leasinghyra, övermil och återlämning. |
-| Bilsök | `server/search.js` → `GET /api/cars` | Söker parallellt i Blocket, Bytbil, Wayke och KVD. Filter: fritext, pris från/till (förvalt från 150 000 kr), årsmodell, miltal och “bara 0 % ränta”. |
+| Bilsök | `server/search.js` → `GET /api/cars` | Söker parallellt i Blocket, Bytbil, Wayke och KVD. Filter: fritext, pris från/till (förvalt från 50 000 kr), årsmodell, miltal och “bara 0 % ränta”. |
 | Billån | `server/search.js` → `POST /api/loans` | Hämtar räntor och avgifter från bankers och finansbolags billånssidor, lägger till säljarens egna erbjudande och räknar ut effektiv ränta, månadskostnad och total lånekostnad. |
 | Lånematte | `public/loanmath.js` | Annuitet och effektiv ränta (konsumentkreditlagens princip). Delas av server och sida. |
 

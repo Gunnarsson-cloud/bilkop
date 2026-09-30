@@ -10,7 +10,7 @@ cpSync(new URL("../public/", import.meta.url), out, { recursive: true });
 
 const fetchedAt = new Date().toISOString();
 // Brett urval; sidan filtrerar sedan efter besökarens val.
-const cars = await searchCars({ minPrice: "100000", maxPrice: "600000", pages: process.env.PAGES ?? "15" });
+const cars = await searchCars({ minPrice: "50000", maxPrice: "600000", pages: process.env.PAGES ?? "15" });
 writeFileSync(`${out}/data/cars.json`, JSON.stringify({ fetchedAt, ...cars }));
 const loans = await fetchLoanTerms();
 writeFileSync(`${out}/data/loans.json`, JSON.stringify({ fetchedAt, rows: loans }));
