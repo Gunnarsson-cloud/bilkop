@@ -3,9 +3,9 @@ import { politeFetch } from "./fetcher.js";
 import { extractCars, extractLoanTerms } from "./extract.js";
 import { loanCost, MIN_DOWN_PCT } from "../public/loanmath.js";
 
-const SOURCES = JSON.parse(readFileSync(new URL("./sources.json", import.meta.url), "utf8"));
+export const SOURCES = JSON.parse(readFileSync(new URL("./sources.json", import.meta.url), "utf8"));
 
-const fill = (tpl, params) =>
+export const fill = (tpl, params) =>
   tpl.replace(/\{(\w+)\}/g, (_, k) => encodeURIComponent(params[k] ?? ""))
      // Ta bort tomma query-parametrar så att sajterna inte får konstiga filter.
      .replace(/([?&])[^=&]+=(?=&|$)/g, "$1").replace(/[?&]+$/, "").replace(/&{2,}/g, "&").replace("?&", "?");

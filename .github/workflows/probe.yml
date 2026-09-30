@@ -1,0 +1,29 @@
+name: Prova källor live
+
+# Kör bilsöks- och billånskällorna mot de riktiga sajterna och skriver ut resultatet i loggen.
+on:
+  workflow_dispatch:
+    inputs:
+      sources:
+        description: "Käll-id separerade med mellanslag (tomt = alla)"
+        required: false
+        default: ""
+  push:
+    paths:
+      - "server/**"
+      - "scripts/probe.js"
+      - ".github/workflows/probe.yml"
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
+      - run: node scripts/probe.js $SOURCES
+        env:
+          SOURCES: ${{ github.event.inputs.sources }}
