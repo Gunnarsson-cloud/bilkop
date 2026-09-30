@@ -1,0 +1,12 @@
+{
+  "name": "bilkop",
+  "version": "1.0.0",
+  "description": "Jämför kostnaden för att leasa eller köpa ny eller begagnad bil, med bilsök och billånsjämförelse.",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node --test"
+  }
+}

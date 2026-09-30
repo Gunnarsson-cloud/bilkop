@@ -1,0 +1,23 @@
+{
+  "_info": "Källor som servern söker i. {q}, {minPrice}, {maxPrice}, {yearFrom} och {maxMil} ersätts med sökvärden. Kontrollera respektive sajts villkor innan en källa aktiveras; servern följer robots.txt men det ersätter inte villkoren.",
+  "cars": [
+    { "id": "blocket", "name": "Blocket", "enabled": true,
+      "search": "https://www.blocket.se/mobility/search/car?q={q}&price_from={minPrice}&price_to={maxPrice}&year_from={yearFrom}&mileage_to={maxMil}" },
+    { "id": "bytbil", "name": "Bytbil", "enabled": true,
+      "search": "https://www.bytbil.com/bil?FreeText={q}&PriceRange.From={minPrice}&PriceRange.To={maxPrice}&ModelYearRange.From={yearFrom}&MilageRange.To={maxMil}" },
+    { "id": "wayke", "name": "Wayke", "enabled": true,
+      "search": "https://www.wayke.se/sok?query={q}&price.min={minPrice}&price.max={maxPrice}&modelYear.min={yearFrom}&mileage.max={maxMil}" },
+    { "id": "kvd", "name": "KVD", "enabled": true,
+      "search": "https://www.kvd.se/begagnade-bilar?q={q}" }
+  ],
+  "loans": [
+    { "id": "santander", "name": "Santander Consumer Bank", "kind": "bank", "url": "https://www.santanderconsumer.se/billan/" },
+    { "id": "ikano", "name": "Ikano Bank", "kind": "bank", "url": "https://ikanobank.se/lana-pengar/billan" },
+    { "id": "nordea", "name": "Nordea", "kind": "bank", "url": "https://www.nordea.se/privat/produkter/lan-krediter/billan.html" },
+    { "id": "seb", "name": "SEB", "kind": "bank", "url": "https://seb.se/privat/lan/billan" },
+    { "id": "swedbank", "name": "Swedbank", "kind": "bank", "url": "https://www.swedbank.se/privat/lan-och-krediter/billan.html" },
+    { "id": "handelsbanken", "name": "Handelsbanken", "kind": "bank", "url": "https://www.handelsbanken.se/sv/privat/lana/billan" },
+    { "id": "vwfinans", "name": "Volkswagen Finans", "kind": "dealer", "url": "https://www.vwfs.se/privat/billan.html" },
+    { "id": "toyotafinans", "name": "Toyota Financial Services", "kind": "dealer", "url": "https://www.toyota.se/finansiering" }
+  ]
+}

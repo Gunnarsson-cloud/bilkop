@@ -63,6 +63,32 @@
   .insight li { margin-bottom:6px; }
   .notes { color:var(--muted); font-size:.88rem; margin-top:24px; }
   .notes li { margin-bottom:4px; }
+  .toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:end; }
+  .toolbar label.f { flex:1 1 150px; margin:0; }
+  .toolbar .chk { font-size:.88rem; color:var(--ink); padding-bottom:8px; }
+  button { font:inherit; border:1px solid var(--accent); background:var(--accent); color:#fff; border-radius:8px;
+    padding:8px 14px; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--accent); padding:4px 10px; font-size:.85rem; }
+  button:disabled { opacity:.6; cursor:wait; }
+  input[type=text] { width:100%; margin-top:3px; padding:8px 10px; font:inherit; color:var(--ink);
+    background:var(--bg); border:1px solid var(--line); border-radius:8px; }
+  .status { color:var(--muted); font-size:.88rem; margin:12px 0 0; }
+  .status .err { color:var(--c-fee); }
+  .cars { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:12px; margin-top:14px; }
+  .car { border:1px solid var(--line); border-radius:10px; overflow:hidden; display:flex; flex-direction:column; background:var(--bg); }
+  .car img { width:100%; aspect-ratio:16/10; object-fit:cover; background:var(--line); }
+  .car .body { padding:10px 12px; display:flex; flex-direction:column; gap:4px; flex:1; }
+  .car .t { font-weight:600; line-height:1.3; }
+  .car .t a { color:inherit; }
+  .car .meta { color:var(--muted); font-size:.85rem; }
+  .car .price { font-weight:700; font-size:1.1rem; font-variant-numeric:tabular-nums; }
+  .car .acts { display:flex; flex-wrap:wrap; gap:6px; margin-top:auto; padding-top:6px; }
+  .badge { display:inline-block; font-size:.72rem; border-radius:99px; padding:1px 8px; border:1px solid var(--good); color:var(--good); }
+  .sub { color:var(--muted); font-size:.88rem; margin:-6px 0 12px; }
+  .manual { margin-top:12px; }
+  .manual legend { font-size:.85rem; }
+  .manual .toolbar label.f { flex-basis:120px; }
+  td .src { display:block; font-size:.78rem; color:var(--muted); }
   @media (max-width:700px) {
     .row { grid-template-columns:1fr; gap:6px; }
     .row .num { text-align:left; }
@@ -74,12 +100,50 @@
   <h1>Leasa eller köpa bil?</h1>
   <p class="lead">Leasingannonser lockar med “från 3 490 kr/mån”, men vad kostar det egentligen jämfört med att äga? Fyll i dina siffror – kalkylatorn jämför <b>hela kostnaden</b> över perioden för fyra alternativ, inklusive värdeminskning, ränta, försäkring, service och övermil. Förvalda värden är exempel – byt ut dem mot faktiska offerter.</p>
 
+  <div class="card" id="search">
+    <h2>Hitta bilar</h2>
+    <p class="sub">Söker i Blocket, Bytbil, Wayke och KVD. Välj en bil för att räkna på den i kalkylen nedan. Annonser som nämner räntefri finansiering märks med “0 % ränta”.</p>
+    <form id="carForm" class="toolbar">
+      <label class="f">Märke/modell <input type="text" name="q" placeholder="t.ex. Volvo V60"></label>
+      <label class="f">Pris från <span class="u">kr</span><input type="number" name="minPrice" value="150000" min="0" step="5000"></label>
+      <label class="f">Pris till <span class="u">kr</span><input type="number" name="maxPrice" min="0" step="5000"></label>
+      <label class="f">Årsmodell från <input type="number" name="yearFrom" min="1990" max="2100"></label>
+      <label class="f">Max miltal <span class="u">mil</span><input type="number" name="maxMil" min="0" step="1000"></label>
+      <label class="chk"><input type="checkbox" name="zeroRateOnly" value="1"> Bara 0 % ränta</label>
+      <button type="submit">Sök bilar</button>
+    </form>
+    <div class="status" id="carStatus"></div>
+    <div class="cars" id="carList"></div>
+  </div>
+  <div style="height:16px"></div>
+
   <div class="card">
     <h2>Gemensamma antaganden</h2>
     <div class="grid shared" id="shared"></div>
   </div>
   <div style="height:16px"></div>
   <div class="grid scen" id="scen"></div>
+
+  <div style="height:16px"></div>
+  <div class="card" id="loans">
+    <h2>Jämför billån</h2>
+    <p class="sub">Hämtar aktuella räntor och avgifter från bankerna och bilhandlarnas finansbolag. Lägg till försäljarens eget erbjudande, t.ex. 0 % ränta, så räknas allt om till effektiv ränta och total kostnad för ditt lån.</p>
+    <div class="toolbar">
+      <label class="f">Lån till <select id="loanFor" style="width:100%;margin-top:3px;padding:8px;font:inherit;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px">
+        <option value="buyUsed">Köpa begagnad bil</option><option value="buyNew">Köpa ny bil</option></select></label>
+      <button type="button" id="loanBtn">Hämta aktuella räntor</button>
+    </div>
+    <fieldset class="manual"><legend>Försäljarens erbjudande (fyll i från offerten)</legend>
+      <div class="toolbar">
+        <label class="f">Namn <input type="text" id="mName" value="Bilhandlarens kampanj"></label>
+        <label class="f">Ränta <span class="u">%</span><input type="number" id="mRate" value="0" min="0" step="0.01"></label>
+        <label class="f">Uppläggning <span class="u">kr</span><input type="number" id="mSetup" value="995" min="0"></label>
+        <label class="f">Aviavgift <span class="u">kr/mån</span><input type="number" id="mMonthly" value="59" min="0"></label>
+      </div>
+    </fieldset>
+    <div class="status" id="loanStatus"></div>
+    <div class="tablewrap" id="loanTable"></div>
+  </div>
 
   <section class="results" id="results" aria-live="polite"></section>
 
@@ -92,7 +156,9 @@
   </ul>
 </div>
 
-<script>
+<script type="module">
+import { loanCost, MIN_DOWN_PCT } from "./loanmath.js";
+
 const fmt = new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 0 });
 const kr = n => fmt.format(Math.round(n)).replace(/−/g, "-") + " kr";
 
@@ -106,7 +172,9 @@ const SHARED = [
 const BUY_FIELDS = (d) => [
   { k: "price", label: "Pris", unit: "kr", v: d.price },
   { k: "down", label: "Kontantinsats", unit: "% av pris", v: d.down, min: 0, max: 100 },
-  { k: "rate", label: "Billåneränta", unit: "% /år", v: 7, step: 0.1, min: 0 },
+  { k: "rate", label: "Billåneränta (0 vid räntefri kampanj)", unit: "% /år", v: 7, step: 0.1, min: 0 },
+  { k: "setupFee", label: "Uppläggningsavgift lån", unit: "kr", v: 595, min: 0 },
+  { k: "monthlyFee", label: "Aviavgift lån", unit: "kr/mån", v: 45, min: 0 },
   { k: "resid", label: "Restvärde efter perioden", unit: "% av pris", v: d.resid, min: 0, max: 100 },
   { k: "ins", label: "Försäkring", unit: "kr/år", v: d.ins },
   { k: "tax", label: "Fordonsskatt", unit: "kr/år", v: d.tax },
@@ -161,18 +229,18 @@ function build() {
 function calcBuy(p, sh) {
   const yrs = sh.months / 12;
   const loan = p.price * (1 - p.down / 100);
-  const r = p.rate / 100 / 12, n = sh.months;
-  const pay = loan === 0 ? 0 : r === 0 ? loan / n : loan * r / (1 - Math.pow(1 + r, -n));
-  const interest = pay * n - loan;
+  const lc = loan > 0 ? loanCost({ principal: loan, rate: p.rate, months: sh.months, setupFee: p.setupFee, monthlyFee: p.monthlyFee })
+    : { interest: 0, total: 0, effective: 0 };
+  const interest = lc.total;
   const opp = p.price * (p.down / 100) * (sh.alt / 100) * yrs;
   const dep = p.price * (1 - p.resid / 100);
   const run = (p.ins + p.tax + p.srv + p.tyre) * yrs;
   const parts = [
     { c: "--c-dep", t: "Värdeminskning", v: dep },
-    { c: "--c-fin", t: "Ränta & utebliven avkastning", v: interest + opp },
+    { c: "--c-fin", t: "Ränta, låneavgifter & utebliven avkastning", v: interest + opp },
     { c: "--c-run", t: "Försäkring, skatt, service, däck", v: run },
   ];
-  return { parts, total: parts.reduce((a, x) => a + x.v, 0), dep, interest, opp, run };
+  return { parts, total: parts.reduce((a, x) => a + x.v, 0), dep, interest, opp, run, loan, effective: lc.effective };
 }
 
 function calcLease(p, buyP, sh) {
@@ -224,13 +292,13 @@ function render() {
       </div>
       <div class="num"><b>${kr(r.total / months)}/mån</b><small>${kr(r.total)} totalt</small></div></div>`).join("") +
     `</div><div class="legend">
-      <span style="--c:var(--c-dep)">Värdeminskning</span><span style="--c:var(--c-fin)">Ränta &amp; utebliven avkastning</span>
+      <span style="--c:var(--c-dep)">Värdeminskning</span><span style="--c:var(--c-fin)">Ränta, låneavgifter &amp; utebliven avkastning</span>
       <span style="--c:var(--c-lease)">Månadshyra</span><span style="--c:var(--c-fee)">Startavgift, återlämning, övermil</span>
       <span style="--c:var(--c-run)">Övriga löpande kostnader</span></div></div>`;
 
   // Detaljtabell
   const rowsDef = [
-    ["Värdeminskning", r => r.dep], ["Låneränta", r => r.interest], ["Utebliven avkastning på kapital", r => (r.opp)],
+    ["Värdeminskning", r => r.dep], ["Ränta & låneavgifter", r => r.interest], ["Utebliven avkastning på kapital", r => (r.opp)],
     ["Månadshyra", r => r.rent], ["Startavgift + återlämning", r => r.fees], ["Övermil", r => r.over],
     ["Försäkring, skatt, service, däck", r => r.run], ["Totalt", r => r.total], ["Per månad", r => r.total / months],
   ];
@@ -248,10 +316,15 @@ function render() {
     const be = (b.total - (r.total - r.rent)) / months;
     const diff = r.total - b.total;
     if (be <= 0) ins.push(`<li><b>${s.title}:</b> även med gratis hyra blir det dyrare än att köpa, på grund av avgifter och kostnader som inte ingår.</li>`);
-    else ins.push(`<li><b>${s.title}:</b> leasing är ${diff > 0 ? "dyrare" : "billigare"} än köp med ${kr(Math.abs(diff))} över perioden. Leasing lönar sig först om månadshyran är under <b>${kr(be)}</b> (nu ${kr(p.fee)}).</li>`);
+    else ins.push(`<li><b>${s.title}:</b> leasing är ${diff > 0 ? "dyrare" : "billigare"} än köp med ${kr(Math.abs(diff))} över perioden. Gränsen där leasing och köp kostar lika: månadshyra <b>${kr(be)}</b> (nu ${kr(p.fee)}).</li>`);
   }
   const overNew = Math.max(0, sh.mil - state.leaseNew.inclMil);
   if (overNew > 0) ins.push(`<li>Du kör ${fmt.format(sh.mil)} mil/år men leasingavtalet ger ${fmt.format(state.leaseNew.inclMil)} – övermil kostar ${kr(overNew * state.leaseNew.over)} per år.</li>`);
+  for (const s of SCENARIOS.filter(x => x.type === "buy")) {
+    const p = state[s.id], r = res[s.id];
+    if (p.down < MIN_DOWN_PCT && p.down < 100) ins.push(`<li><b>${s.title}:</b> kontantinsatsen ${p.down} % är under ${MIN_DOWN_PCT} %, som billån normalt kräver.</li>`);
+    if (r.loan > 0) ins.push(`<li><b>${s.title}:</b> lånet på ${kr(r.loan)} har effektiv ränta <b>${r.effective.toFixed(2).replace(".", ",")} %</b> och kostar ${kr(r.interest)} i ränta och avgifter.${p.rate === 0 ? " Räntefritt betyder inte kostnadsfritt: avgifterna finns kvar, och en 0 %-kampanj ersätter ofta den rabatt du annars kunnat förhandla fram. Jämför kontantpriset hos flera säljare." : ""}</li>`);
+  }
   html += `<div class="card insight"><h2>Så ska du tolka det</h2><ul>${ins.join("")}</ul></div>`;
 
   $("#results").innerHTML = html;
@@ -264,6 +337,123 @@ function onInput(e) {
   else state[scope === "shared" ? "shared" : scope][t.dataset.k] = parseFloat(t.value) || 0;
   render();
 }
+
+// ---- Bilsök och billån (kräver servern: npm start) ----
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const safeUrl = u => (/^https?:\/\//i.test(u ?? "") ? u : "#");
+const pctFmt = v => (v == null || !isFinite(v) ? "–" : v.toFixed(2).replace(".", ",") + " %");
+const NO_SERVER = "Sökningen kräver servern. Starta den med <code>npm start</code> och öppna http://localhost:3000.";
+let cars = [];
+
+function setField(scope, k, v) {
+  state[scope][k] = v;
+  const el = document.querySelector(`input[data-scope="${scope}"][data-k="${k}"]`);
+  if (el) el.value = v;
+}
+
+function useCar(i, scope) {
+  const c = cars[i];
+  setField(scope, "price", c.price);
+  if (c.dealerRate != null) setField(scope, "rate", c.dealerRate);
+  const card = document.querySelector(`#scen .card:nth-child(${SCENARIOS.findIndex(s => s.id === scope) + 1}) .sub`);
+  if (card) card.textContent = `${c.title}${c.year ? ", " + c.year : ""}`;
+  render();
+  document.getElementById("scen").scrollIntoView({ behavior: "smooth" });
+}
+
+function renderCars() {
+  $("#carList").innerHTML = cars.map((c, i) => `<div class="car">
+    ${c.image ? `<img src="${esc(safeUrl(c.image))}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}
+    <div class="body">
+      <div class="t"><a href="${esc(safeUrl(c.url))}" target="_blank" rel="noopener noreferrer">${esc(c.title)}</a></div>
+      <div class="meta">${[c.year, c.mileageMil != null ? fmt.format(c.mileageMil) + " mil" : null, c.fuel, c.source].filter(Boolean).map(esc).join(" · ")}</div>
+      <div class="price">${kr(c.price)}</div>
+      ${c.dealerRate != null ? `<div><span class="badge">${esc(pctFmt(c.dealerRate))} ränta</span></div>` : ""}
+      <div class="acts"><button class="ghost" data-car="${i}" data-to="buyUsed">Räkna som begagnad</button>
+        <button class="ghost" data-car="${i}" data-to="buyNew">Räkna som ny</button></div>
+    </div></div>`).join("");
+}
+
+$("#carForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const fd = new FormData(e.target), params = new URLSearchParams();
+  for (const [k, v] of fd) if (v !== "") params.set(k, v);
+  const btn = e.target.querySelector("button"); btn.disabled = true;
+  $("#carStatus").textContent = "Söker … (servern väntar mellan anrop till varje sajt, så det kan ta några sekunder)";
+  try {
+    const r = await fetch("/api/cars?" + params);
+    if (!r.ok) throw new Error(r.status);
+    const data = await r.json();
+    cars = data.cars;
+    renderCars();
+    $("#carStatus").innerHTML = `${cars.length} bilar hittades. ` + data.sources.map(s =>
+      s.error ? `<span class="err">${esc(s.name)}: ${esc(s.error)}</span>` : `${esc(s.name)}: ${s.found}`).join(" · ");
+  } catch {
+    $("#carStatus").innerHTML = NO_SERVER;
+  } finally { btn.disabled = false; }
+});
+
+$("#carList").addEventListener("click", e => {
+  const b = e.target.closest("button[data-car]");
+  if (b) useCar(+b.dataset.car, b.dataset.to);
+});
+
+function manualOffer() {
+  return { id: "manual", kind: "manual", name: $("#mName").value || "Försäljarens erbjudande",
+    nominal: parseFloat($("#mRate").value) || 0, setupFee: parseFloat($("#mSetup").value) || 0,
+    monthlyFee: parseFloat($("#mMonthly").value) || 0 };
+}
+
+function loanRequest() {
+  const scope = $("#loanFor").value, p = state[scope];
+  return { scope, amount: Math.round(p.price * (1 - p.down / 100)), price: p.price, months: state.shared.months };
+}
+
+let loanOffers = [];
+function renderLoans(req, offers, warnings = []) {
+  loanOffers = offers;
+  const kind = { bank: "Bank", dealer: "Finansbolag", manual: "Försäljaren" };
+  $("#loanTable").innerHTML = `<table><thead><tr><th>Långivare</th><th>Ränta</th><th>Effektiv ränta</th>
+    <th>Per månad</th><th>Lånekostnad totalt</th><th></th></tr></thead><tbody>` +
+    offers.map((o, i) => o.error
+      ? `<tr><td>${esc(o.name)}<span class="src">${esc(kind[o.kind] ?? "")}</span></td><td colspan="5" style="text-align:left;color:var(--muted)">${esc(o.error)}</td></tr>`
+      : `<tr><td>${o.url ? `<a href="${esc(safeUrl(o.url))}" target="_blank" rel="noopener noreferrer">${esc(o.name)}</a>` : esc(o.name)}
+          <span class="src">${esc(kind[o.kind] ?? "")}${o.setupFee || o.monthlyFee ? ` · ${kr(o.setupFee ?? 0)} + ${kr(o.monthlyFee ?? 0)}/mån` : ""}</span></td>
+        <td>${pctFmt(o.rate)}${o.nominal == null ? "*" : ""}</td><td>${pctFmt(o.effective)}</td><td>${kr(o.monthly)}</td><td>${kr(o.total)}</td>
+        <td><button class="ghost" data-loan="${i}">Använd</button></td></tr>`).join("") +
+    `</tbody></table>` +
+    `<p class="status">Lån på ${kr(req.amount)} över ${req.months} månader. Räntor från bankernas sidor är ofta “från”-räntor; din faktiska ränta sätts efter kreditprövning.
+     ${offers.some(o => !o.error && o.nominal == null) ? " * Bara effektiv ränta hittades och används som ränta." : ""}</p>` +
+    warnings.map(w => `<p class="status err">${esc(w)}</p>`).join("");
+}
+
+$("#loanTable").addEventListener("click", e => {
+  const b = e.target.closest("button[data-loan]");
+  if (!b) return;
+  const o = loanOffers[+b.dataset.loan], scope = $("#loanFor").value;
+  setField(scope, "rate", +o.rate.toFixed(2));
+  setField(scope, "setupFee", o.setupFee ?? 0);
+  setField(scope, "monthlyFee", o.monthlyFee ?? 0);
+  render();
+});
+
+$("#loanBtn").addEventListener("click", async () => {
+  const req = loanRequest(), btn = $("#loanBtn"); btn.disabled = true;
+  $("#loanStatus").textContent = "Hämtar räntor …";
+  try {
+    const r = await fetch("/api/loans", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...req, manual: [manualOffer()] }) });
+    if (!r.ok) throw new Error(r.status);
+    const data = await r.json();
+    $("#loanStatus").textContent = "";
+    renderLoans(req, data.offers, data.warnings);
+  } catch {
+    // Utan server räknas åtminstone försäljarens erbjudande lokalt.
+    const m = manualOffer();
+    renderLoans(req, [{ ...m, rate: m.nominal, ...loanCost({ principal: req.amount, rate: m.nominal, months: req.months, setupFee: m.setupFee, monthlyFee: m.monthlyFee }) }]);
+    $("#loanStatus").innerHTML = NO_SERVER + " Nedan räknas bara försäljarens erbjudande.";
+  } finally { btn.disabled = false; }
+});
 
 build();
 document.addEventListener("input", onInput);
