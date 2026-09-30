@@ -9,7 +9,7 @@ on:
         required: false
         default: ""
       save:
-        description: "Spara hämtade sidor till grenen (probe-output/)"
+        description: "Spara hämtade sidor som artefakt i en dag"
         type: boolean
         default: false
   push:
@@ -19,7 +19,7 @@ on:
       - ".github/workflows/probe.yml"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   probe:
@@ -35,11 +35,10 @@ jobs:
         env:
           SOURCES: ${{ github.event.inputs.sources }}
           SAVE: ${{ github.event.inputs.save == 'true' && '1' || '' }}
-      - name: Spara sidorna på grenen
+      - name: Spara sidorna som arbetsflödesartefakt (1 dag)
         if: github.event.inputs.save == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add probe-output
-          git commit -m "Spara live-sidor från källorna" || exit 0
-          git push origin HEAD:${GITHUB_REF_NAME}
+        uses: actions/upload-artifact@v4
+        with:
+          name: probe-output
+          path: probe-output
+          retention-days: 1

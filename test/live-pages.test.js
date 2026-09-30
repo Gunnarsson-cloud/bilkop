@@ -1,4 +1,4 @@
-// Tester mot riktiga sidor som sparats av arbetsflödet "Prova källor live" (probe-output/).
+// Tester mot riktiga sidor i probe-output/ (ignoreras av git), sparade med scripts/probe.js --save.
 // Hoppas över om sidorna saknas.
 import { test } from "node:test";
 import assert from "node:assert/strict";

@@ -20,7 +20,9 @@ och räknar i webbläsaren. `node scripts/build-site.js site` hämtar aktuell da
 sådan sida i `site/`, klar att lägga ut på valfritt webbhotell.
 
 `.github/workflows/probe.yml` provar alla källor och skriver ut vad som fungerar. Med valet
-“save” sparas sidorna i `probe-output/`, som testerna i `test/live-pages.test.js` använder.
+“save” sparas sidorna som en artefakt i en dag. Packa upp den i `probe-output/` (ignoreras av git)
+för att köra `test/live-pages.test.js` mot riktiga sidor; annars hoppas de testerna över.
+Lokalt: `node scripts/probe.js --save probe-output`.
 
 ## Delar
 
