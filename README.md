@@ -10,6 +10,10 @@ npm test
 
 Kräver Node 20 eller senare, inga beroenden.
 
+## Publicerad sida
+`.github/workflows/publish.yml` hämtar bilar och lånevillkor tre gånger per dag med GitHub Actions
+och publicerar sidan på GitHub Pages: https://gunnarsson-cloud.github.io/bilkop/
+
 ## Statisk sida
 Sidan fungerar även utan server. Den läser då `data/cars.json` och `data/loans.json` och filtrerar
 och räknar i webbläsaren. `node scripts/build-site.js site` hämtar aktuell data och bygger en
