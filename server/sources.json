@@ -47,7 +47,7 @@
     },
     {
       "id": "seb",
-      "name": "SEB",
+      "name": "SEB Enkla lånet (utan säkerhet)",
       "kind": "bank",
       "url": "https://seb.se/privat/lana/privatlan-och-krediter/billan-lana-till-bil-med-enkla-lanet"
     },
@@ -59,7 +59,7 @@
     },
     {
       "id": "handelsbanken",
-      "name": "Handelsbanken",
+      "name": "Handelsbanken privatlån (utan säkerhet)",
       "kind": "bank",
       "url": "https://www.handelsbanken.se/sv/privat/lan/bil-och-fritidslan"
     },

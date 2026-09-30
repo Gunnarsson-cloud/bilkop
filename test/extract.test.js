@@ -55,3 +55,7 @@ test("räntor: procentsatser som inte är räntor ignoreras", () => {
   assert.deepEqual(t("Individuell r&#228;nta mellan 6,22 % och 18,87 % … 6,22 % Vår lägsta ränta just nu Effektiv ränta: 6,49 % 18,87 % Vår högsta ränta just nu Effektiv ränta: 20,48 %"),
     { campaign: null, nominal: 6.22, effective: 6.49, setupFee: null, monthlyFee: null });
 });
+
+test("räntor: intervall med procenttecken bara på slutet", () => {
+  assert.equal(extractLoanTerms("<p>Låna mellan 20 000 kr och 350 000 kr. Ränta på 6,20–13,65 %, se räkneexempel.</p>").nominal, 6.2);
+});

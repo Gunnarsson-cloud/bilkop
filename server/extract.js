@@ -208,7 +208,8 @@ export function findCampaign(html) {
 // texten runt den, så att t.ex. "20 % i kontantinsats" eller "80 % av värdet" inte tas för ränta.
 // Vid intervall ("5,49 %–5,99 %") används den lägsta nivån, som banken annonserar.
 export function extractLoanTerms(html) {
-  const text = htmlText(html);
+  // "6,20–13,65 %" -> "6,20 %–13,65 %" så att båda ändarna av ett intervall hittas.
+  const text = htmlText(html).replace(/(\d{1,2}[,.]\d{1,2})\s?([–-])\s?(\d{1,2}[,.]\d{1,2})\s?%/g, "$1 %$2$3 %");
   const nominal = [], effective = [];
   for (const m of text.matchAll(/(\d{1,2}(?:[,.]\d{1,2})?)\s?%/g)) {
     const v = parseFloat(m[1].replace(",", "."));

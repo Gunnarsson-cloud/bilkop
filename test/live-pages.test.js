@@ -32,6 +32,7 @@ for (const [id, base] of [
 }
 
 test("billånssidor: räntor och kampanjer", { skip: !page("nordea") && "sidorna är inte sparade" }, () => {
+  assert.ok(extractLoanTerms(page("seb")).nominal < 10, "SEB: lägsta räntan i intervallet");
   const nordea = extractLoanTerms(page("nordea"));
   assert.ok(nordea.nominal < nordea.effective, JSON.stringify(nordea));
   for (const id of ["ikano", "swedbank"]) {
