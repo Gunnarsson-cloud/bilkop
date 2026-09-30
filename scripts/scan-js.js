@@ -23,6 +23,13 @@ if (!pattern) {
     for (const v of Object.values(o)) { const f = firstList(v, d + 1); if (f) return f; } return null; };
   const list = firstList(data);
   if (list) console.log("\nFÖRSTA POSTEN:", JSON.stringify(list[0]).slice(0, 5000));
+  // FIELDS=a.b,c.d visar de fälten för de 12 första posterna.
+  if (list && process.env.FIELDS) {
+    const get = (o, path) => path.split(".").reduce((x, k) => x?.[k], o);
+    for (const item of list.slice(0, 12)) {
+      console.log(JSON.stringify(Object.fromEntries(process.env.FIELDS.split(",").map(f => [f, get(item, f)]))));
+    }
+  }
   process.exit(0);
 }
 const re = new RegExp(pattern, "g");

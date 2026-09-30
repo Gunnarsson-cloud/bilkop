@@ -16,6 +16,10 @@ on:
         description: "Mönster (regex) att söka efter i JavaScript"
         required: false
         default: ""
+      scan_fields:
+        description: "För JSON-svar: fält att visa per post, t.ex. a.b,c"
+        required: false
+        default: ""
       save:
         description: "Spara hämtade sidor som artefakt i en dag"
         type: boolean
@@ -45,6 +49,7 @@ jobs:
         env:
           SCAN_URL: ${{ github.event.inputs.scan_url }}
           SCAN_PATTERN: ${{ github.event.inputs.scan_pattern }}
+          FIELDS: ${{ github.event.inputs.scan_fields }}
       - run: node scripts/probe.js $SOURCES ${SAVE:+--save probe-output}
         env:
           SOURCES: ${{ github.event.inputs.sources }}
