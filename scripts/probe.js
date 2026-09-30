@@ -2,7 +2,7 @@
 // vad som fungerar. Körs i GitHub Actions (se .github/workflows/probe.yml) eller lokalt:
 //   node scripts/probe.js [käll-id ...]
 import { USER_AGENT, parseRobots, isAllowed } from "../server/fetcher.js";
-import { extractCars, extractLoanTerms } from "../server/extract.js";
+import { extractCars, extractLoanTerms, embeddedJson } from "../server/extract.js";
 import { SOURCES, fill } from "../server/search.js";
 
 const only = process.argv.slice(2);
@@ -56,6 +56,33 @@ function deep(html) {
   return out;
 }
 
+// Hittar första objekt som ser ut som en annons (id + pris någonstans under sig + text) och visar det helt.
+function sampleListings(html) {
+  const hasPrice = (o, d = 0) => d < 4 && o && typeof o === "object" &&
+    Object.entries(o).some(([k, v]) => (/price|pris/i.test(k) && v != null && v !== 0) || hasPrice(v, d + 1));
+  const found = [];
+  const walk = (o, d = 0) => {
+    if (found.length >= 2 || !o || typeof o !== "object" || d > 30) return;
+    if (Array.isArray(o)) {
+      if (o.length >= 3 && o.slice(0, 3).every(x => x && typeof x === "object" && !Array.isArray(x) &&
+          ("id" in x || "adId" in x || "slug" in x) && hasPrice(x))) {
+        found.push(`lista med ${o.length} st, exempel: ${JSON.stringify(o[0]).slice(0, 3500)}`);
+        return;
+      }
+      return o.forEach(x => walk(x, d + 1));
+    }
+    Object.values(o).forEach(v => walk(v, d + 1));
+  };
+  const blobs = embeddedJson(html);
+  blobs.forEach(b => walk(b));
+  return [`${blobs.length} JSON-block`, ...found];
+}
+
+function adLinkHtml(html) {
+  const i = html.search(/href="\/[^"]*-\d{6,}"/);
+  return i < 0 ? null : html.slice(i - 200, i + 3000).replace(/\s+/g, " ");
+}
+
 function searchLinks(html, base) {
   const out = new Set();
   for (const m of html.matchAll(/(?:href|action)="([^"#]+)"/gi)) {
@@ -85,7 +112,9 @@ async function probe(kind, s, url) {
       console.log(`bilar hittade: ${cars.length}`);
       for (const c of cars.slice(0, 3)) console.log("  ", JSON.stringify(c));
       if (!cars.length) {
-        for (const line of deep(r.body)) console.log(line);
+        for (const line of sampleListings(r.body)) console.log("PROV:", line);
+        const ad = adLinkHtml(r.body);
+        if (ad) console.log("ANNONS-HTML:", ad);
         const home = await get(new URL(url).origin + "/");
         console.log("sökrelaterade länkar på startsidan:", JSON.stringify(searchLinks(home.body, home.url)));
       }
@@ -98,6 +127,14 @@ async function probe(kind, s, url) {
         try { links.add(new URL(m[1].replace(/&amp;/g, "&"), home.url).href); } catch { /* ogiltig länk */ }
       }
       console.log("billånslänkar på startsidan:", JSON.stringify([...links].slice(0, 8)));
+      for (const map of ["/sitemap.xml", "/sitemap_index.xml"]) {
+        try {
+          const sm = await get(new URL(url).origin + map);
+          const locs = [...sm.body.matchAll(/<loc>([^<]*)<\/loc>/g)].map(m => m[1]);
+          console.log(`${map}: ${sm.status}, ${locs.length} adresser, billån:`, JSON.stringify(locs.filter(l => /bil-?l[aå]n|billan|bilfinans/i.test(l)).slice(0, 8)),
+            "undersitemaps:", JSON.stringify(locs.filter(l => /\.xml/.test(l)).slice(0, 8)));
+        } catch (e) { console.log(map, "FEL", e.message); }
+      }
     }
     const terms = extractLoanTerms(r.body);
     console.log("villkor:", JSON.stringify(terms));

@@ -20,6 +20,43 @@ function jsonScripts(html, selector) {
   return out;
 }
 
+// Läser ut ett balanserat JSON-objekt/-array som börjar vid index start.
+function balancedJson(s, start) {
+  const open = s[start], close = open === "{" ? "}" : "]";
+  let depth = 0, inStr = false;
+  for (let i = start; i < s.length; i++) {
+    const c = s[i];
+    if (inStr) {
+      if (c === "\\") i++;
+      else if (c === '"') inStr = false;
+    } else if (c === '"') inStr = true;
+    else if (c === open) depth++;
+    else if (c === close && --depth === 0) return s.slice(start, i + 1);
+  }
+  return null;
+}
+
+// All JSON som sidan bäddar in: <script type="application/json"> samt tilldelningar och
+// push-anrop i inline-skript, t.ex. window.INITIAL_REDUX_STATE = {...} eller x.push({...}).
+export function embeddedJson(html) {
+  const out = [];
+  for (const m of html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/gi)) {
+    const attrs = m[1], body = m[2];
+    if (/src=/i.test(attrs) || body.length < 50) continue;
+    if (/application\/(?:ld\+)?json/i.test(attrs)) {
+      try { out.push(JSON.parse(body.trim())); } catch { /* trasig JSON hoppas över */ }
+      continue;
+    }
+    for (const a of body.matchAll(/(?:=|\.push\()\s*([{[])/g)) {
+      const start = a.index + a[0].length - 1;
+      const text = balancedJson(body, start);
+      if (!text || text.length < 50) continue;
+      try { out.push(JSON.parse(text)); } catch { /* inte ren JSON */ }
+    }
+  }
+  return out;
+}
+
 // Kilometer -> mil. Svenska sajter anger oftast mil direkt.
 function mileageMil(o) {
   const m = o.mileageFromOdometer ?? o.mileage ?? o.milage ?? o.odometer;
