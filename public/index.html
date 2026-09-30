@@ -92,6 +92,9 @@
   .manual { margin-top:12px; }
   .manual legend { font-size:.85rem; }
   .manual .toolbar label.f { flex-basis:120px; }
+  #loanTable td:not(:first-child) { white-space:nowrap; }
+  #loanTable td .src { white-space:normal; }
+  .src.err { color:var(--c-fee); }
   td .src { display:block; font-size:.78rem; color:var(--muted); }
   @media (max-width:700px) {
     .row { grid-template-columns:1fr; gap:6px; }
@@ -392,6 +395,8 @@ function useCar(i, scope) {
   const card = document.querySelector(`#scen .card:nth-child(${SCENARIOS.findIndex(s => s.id === scope) + 1}) .sub`);
   if (card) card.textContent = `${c.title}${c.year ? ", " + c.year : ""}`;
   render();
+  $("#loanFor").value = scope;
+  loansUI();
   document.getElementById("scen").scrollIntoView({ behavior: "smooth" });
 }
 
@@ -442,7 +447,7 @@ function manualOffer() {
 
 function loanRequest() {
   const scope = $("#loanFor").value, p = state[scope];
-  return { scope, amount: Math.round(p.price * (1 - p.down / 100)), price: p.price, months: state.shared.months };
+  return { scope, amount: Math.round(p.price * (1 - p.down / 100)), price: p.price, downPct: p.down, months: state.shared.months };
 }
 
 function campaignNote(c) {
@@ -461,7 +466,8 @@ function renderLoans(req, offers, warnings = []) {
     offers.map((o, i) => o.error
       ? `<tr><td>${esc(o.name)}<span class="src">${esc(kind[o.kind] ?? "")}</span></td><td colspan="5" style="text-align:left;color:var(--muted)">${esc(o.error)}</td></tr>`
       : `<tr${o.campaign ? ` title="${esc(o.campaign.text)}"` : ""}><td>${o.url ? `<a href="${esc(safeUrl(o.url))}" target="_blank" rel="noopener noreferrer">${esc(o.name)}</a>` : esc(o.name)}
-          <span class="src">${esc(kind[o.kind] ?? "")}${o.setupFee || o.monthlyFee ? ` · ${kr(o.setupFee ?? 0)} + ${kr(o.monthlyFee ?? 0)}/mån` : ""}${o.campaign ? " · " + esc(campaignNote(o.campaign)) : ""}</span></td>
+          <span class="src">${esc(kind[o.kind] ?? "")}${o.setupFee || o.monthlyFee ? ` · ${kr(o.setupFee ?? 0)} + ${kr(o.monthlyFee ?? 0)}/mån` : ""}${o.campaign ? " · " + esc(campaignNote(o.campaign)) : ""}</span>
+          ${o.campaign?.downPct > req.downPct ? `<span class="src err">Kräver ${o.campaign.downPct} % kontantinsats, du har ${req.downPct} %.</span>` : ""}</td>
         <td>${pctFmt(o.rate)}${o.nominal == null ? "*" : ""}</td><td>${pctFmt(o.effective)}</td>
         <td>${kr(o.monthly)}${o.balloon ? `<span class="src">+ ${kr(o.balloon)} vid slutet</span>` : ""}</td><td>${kr(o.total)}</td>
         <td><button class="ghost" data-loan="${i}">Använd</button></td></tr>`).join("") +
@@ -496,6 +502,19 @@ async function loansUI() {
   } finally { btn.disabled = false; }
 }
 $("#loanBtn").addEventListener("click", loansUI);
+
+// Räkna om lånen när något som påverkar lånet ändras: pris, kontantinsats, period, säljarens erbjudande.
+let loanTimer;
+function refreshLoansSoon() {
+  clearTimeout(loanTimer);
+  loanTimer = setTimeout(loansUI, 400);
+}
+document.addEventListener("input", e => {
+  const t = e.target;
+  if (t.closest("#loans fieldset") || (t.dataset.scope === "shared" && t.dataset.k === "months") ||
+      (t.dataset.scope === $("#loanFor").value && ["price", "down"].includes(t.dataset.k))) refreshLoansSoon();
+});
+$("#loanFor").addEventListener("change", loansUI);
 
 build();
 document.addEventListener("input", onInput);
