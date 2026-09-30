@@ -8,6 +8,14 @@ on:
         description: "Käll-id separerade med mellanslag (tomt = alla)"
         required: false
         default: ""
+      scan_url:
+        description: "Sök i den här sidans JavaScript (valfritt)"
+        required: false
+        default: ""
+      scan_pattern:
+        description: "Mönster (regex) att söka efter i JavaScript"
+        required: false
+        default: ""
       save:
         description: "Spara hämtade sidor som artefakt i en dag"
         type: boolean
@@ -31,6 +39,12 @@ jobs:
         with:
           node-version: 22
       - run: npm test
+      - name: Sök i JavaScript
+        if: github.event.inputs.scan_url != ''
+        run: node scripts/scan-js.js "$SCAN_URL" "$SCAN_PATTERN"
+        env:
+          SCAN_URL: ${{ github.event.inputs.scan_url }}
+          SCAN_PATTERN: ${{ github.event.inputs.scan_pattern }}
       - run: node scripts/probe.js $SOURCES ${SAVE:+--save probe-output}
         env:
           SOURCES: ${{ github.event.inputs.sources }}
