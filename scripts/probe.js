@@ -158,7 +158,9 @@ async function probe(kind, s, url) {
 
 const summary = [];
 for (const s of pick(SOURCES.cars)) { summary.push(await probe("BIL", s, fill(s.search, SEARCH))); await sleep(1500); }
-for (const s of pick(SOURCES.loans)) { summary.push(await probe("LÅN", s, s.url)); await sleep(1500); }
+for (const s of pick(SOURCES.loans)) {
+  for (const url of [s.url, ...(s.alsoUrls ?? [])]) { summary.push(await probe("LÅN", s, url)); await sleep(1500); }
+}
 
 console.log("\n=== SAMMANFATTNING");
 for (const r of summary) console.log(`${r.ok ? "OK  " : "MISS"} ${JSON.stringify(r)}`);

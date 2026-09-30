@@ -65,11 +65,27 @@ export async function searchCars(params, { fetchPage = politeFetch } = {}) {
   };
 }
 
+// Läser villkoren från långivarens sida och eventuella extrasidor (prislistor, räkneexempel).
+// Den första sidan som ger ett värde vinner; övriga fyller bara i det som saknas.
+async function termsFrom(s, fetchPage) {
+  const merged = { campaign: null, effective: null, nominal: null, setupFee: null, monthlyFee: null };
+  const errors = [];
+  for (const url of [s.url, ...(s.alsoUrls ?? [])]) {
+    try {
+      const t = extractLoanTerms(await fetchPage(url));
+      for (const k of Object.keys(merged)) merged[k] ??= t[k];
+    } catch (e) { errors.push(e.message); }
+    if (merged.nominal != null && merged.effective != null && merged.setupFee != null) break;
+  }
+  if (errors.length === 1 + (s.alsoUrls?.length ?? 0)) throw new Error(errors[0]);
+  return merged;
+}
+
 // Hämtar villkoren från alla långivare; fel per långivare blir en rad med error.
 export async function fetchLoanTerms({ fetchPage = politeFetch } = {}) {
   return (await Promise.all(SOURCES.loans.map(async s => {
     try {
-      const rows = loanRows(s, extractLoanTerms(await fetchPage(s.url)));
+      const rows = loanRows(s, await termsFrom(s, fetchPage));
       if (!rows.length) throw new Error("hittade ingen ränta på sidan");
       return rows;
     } catch (e) {

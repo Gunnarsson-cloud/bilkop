@@ -1,5 +1,5 @@
 {
-  "_info": "Källor som servern söker i. {q}, {minPrice}, {maxPrice}, {yearFrom} och {maxMil} ersätts med sökvärden. Kontrollera respektive sajts villkor innan en källa aktiveras; servern följer robots.txt men det ersätter inte villkoren. pageParam är URL-parametern för sidnummer i sökresultatet; med pageSize räknas den som offset ((sida-1)*pageSize).",
+  "_info": "Källor som servern söker i. {q}, {minPrice}, {maxPrice}, {yearFrom} och {maxMil} ersätts med sökvärden. Kontrollera respektive sajts villkor innan en källa aktiveras; servern följer robots.txt men det ersätter inte villkoren. pageParam är URL-parametern för sidnummer i sökresultatet; med pageSize räknas den som offset ((sida-1)*pageSize). För långivare: url är sidan som visas; alsoUrls provas också och fyller i det som saknas.",
   "cars": [
     {
       "id": "blocket",
@@ -36,7 +36,11 @@
       "id": "santander",
       "name": "Santander Consumer Bank",
       "kind": "bank",
-      "url": "https://www.santanderconsumer.se/lana/billan"
+      "url": "https://www.santanderconsumer.se/lana/billan",
+      "alsoUrls": [
+        "https://www.santanderconsumer.se/lana/billan/kopa-bil-av-privatperson",
+        "https://www.santanderconsumer.se/lana/billan/kopa-bil-via-bilhandlare"
+      ]
     },
     {
       "id": "ikano",
@@ -66,13 +70,20 @@
       "id": "handelsbanken",
       "name": "Handelsbanken privatlån (utan säkerhet)",
       "kind": "bank",
-      "url": "https://www.handelsbanken.se/sv/privat/lan/bil-och-fritidslan"
+      "url": "https://www.handelsbanken.se/sv/privat/lan/bil-och-fritidslan",
+      "alsoUrls": [
+        "https://www.handelsbanken.se/sv/om-oss/juridiska-dokument/prislistor-privat/prislista-lan/avgifter-och-ranta-for-privatlanet"
+      ]
     },
     {
       "id": "vwfinans",
       "name": "Volkswagen Finans",
       "kind": "dealer",
-      "url": "https://www.vwfs.se/privat/lana-till-bil/billan.html"
+      "url": "https://www.vwfs.se/privat/lana-till-bil/billan.html",
+      "alsoUrls": [
+        "https://www.vwfs.se/kopa-leasa-bil/billan/",
+        "https://www.vwfs.se/aktuell-basranta.html"
+      ]
     },
     {
       "id": "toyotafinans",
