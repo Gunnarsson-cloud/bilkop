@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leasa eller köpa bil – kalkylator</title>
+<meta name="description" content="Jämför den verkliga totalkostnaden för att leasa eller köpa en ny eller begagnad bil.">
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #fff; --ink: #14181f; --muted: #5b6472; --line: #e2e5ea;
+    --accent: #1b5fd6; --good: #16803c; --goodbg: #e6f5ec;
+    --c-dep: #1b5fd6; --c-fin: #e0892b; --c-run: #8a94a6; --c-lease: #7b4fd1; --c-fee: #c2416c;
+    --radius: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0f1319; --card:#181d26; --ink:#e8ebf0; --muted:#98a2b3; --line:#2a313d;
+      --accent:#5b93ff; --good:#4cc57d; --goodbg:#16281e;
+      --c-dep:#5b93ff; --c-fin:#f0a04b; --c-run:#7c8798; --c-lease:#a184ee; --c-fee:#e5719b; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:1100px; margin:0 auto; padding:24px 16px 64px; }
+  h1 { font-size:1.9rem; margin:0 0 6px; line-height:1.2; }
+  h2 { font-size:1.15rem; margin:0 0 12px; }
+  p.lead { color:var(--muted); margin:0 0 24px; max-width:70ch; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:18px; }
+  .grid { display:grid; gap:16px; }
+  .shared { grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); margin-bottom:16px; }
+  .scen { grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); }
+  .scen .card h3 { margin:0 0 2px; font-size:1.05rem; }
+  .scen .card .sub { color:var(--muted); font-size:.85rem; margin-bottom:12px; }
+  label.f { display:block; font-size:.85rem; color:var(--muted); margin-bottom:10px; }
+  label.f span.u { float:right; }
+  input[type=number] { width:100%; margin-top:3px; padding:8px 10px; font:inherit; color:var(--ink);
+    background:var(--bg); border:1px solid var(--line); border-radius:8px; }
+  input[type=number]:focus { outline:2px solid var(--accent); outline-offset:1px; }
+  fieldset { border:1px dashed var(--line); border-radius:8px; margin:6px 0 0; padding:8px 10px; }
+  legend { font-size:.8rem; color:var(--muted); padding:0 4px; }
+  fieldset label { display:inline-block; margin:2px 10px 2px 0; font-size:.88rem; }
+  .results { margin-top:28px; }
+  .verdict { background:var(--goodbg); border:1px solid var(--good); color:var(--ink); border-radius:var(--radius);
+    padding:16px 18px; margin-bottom:16px; }
+  .verdict strong { color:var(--good); }
+  .rows { display:grid; gap:12px; }
+  .row { display:grid; grid-template-columns:190px 1fr 190px; gap:14px; align-items:center; }
+  .row .name { font-weight:600; }
+  .row .name small { display:block; font-weight:400; color:var(--muted); }
+  .bar { display:flex; height:30px; background:var(--bg); border-radius:6px; overflow:hidden; }
+  .bar i { display:block; height:100%; }
+  .row .num { text-align:right; font-variant-numeric:tabular-nums; }
+  .row .num b { font-size:1.1rem; }
+  .row .num small { display:block; color:var(--muted); }
+  .row.best .name::after { content:"Billigast"; margin-left:8px; font-size:.7rem; color:var(--good);
+    border:1px solid var(--good); border-radius:99px; padding:1px 7px; vertical-align:middle; }
+  .legend { display:flex; flex-wrap:wrap; gap:14px; margin-top:14px; font-size:.85rem; color:var(--muted); }
+  .legend span::before { content:""; display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; background:var(--c); }
+  table { width:100%; border-collapse:collapse; font-size:.92rem; font-variant-numeric:tabular-nums; }
+  th, td { padding:7px 8px; border-bottom:1px solid var(--line); text-align:right; }
+  th:first-child, td:first-child { text-align:left; }
+  th { color:var(--muted); font-weight:600; font-size:.82rem; }
+  .tablewrap { overflow-x:auto; }
+  .insight { margin-top:16px; }
+  .insight li { margin-bottom:6px; }
+  .notes { color:var(--muted); font-size:.88rem; margin-top:24px; }
+  .notes li { margin-bottom:4px; }
+  @media (max-width:700px) {
+    .row { grid-template-columns:1fr; gap:6px; }
+    .row .num { text-align:left; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Leasa eller köpa bil?</h1>
+  <p class="lead">Leasingannonser lockar med “från 3 490 kr/mån”, men vad kostar det egentligen jämfört med att äga? Fyll i dina siffror – kalkylatorn jämför <b>hela kostnaden</b> över perioden för fyra alternativ, inklusive värdeminskning, ränta, försäkring, service och övermil. Förvalda värden är exempel – byt ut dem mot faktiska offerter.</p>
+
+  <div class="card">
+    <h2>Gemensamma antaganden</h2>
+    <div class="grid shared" id="shared"></div>
+  </div>
+  <div style="height:16px"></div>
+  <div class="grid scen" id="scen"></div>
+
+  <section class="results" id="results" aria-live="polite"></section>
+
+  <ul class="notes">
+    <li>Bränsle/el ingår inte – det kostar ungefär lika mycket oavsett om du leasar eller äger samma bil.</li>
+    <li>Vid köp räknas kostnaden som <i>värdeminskning + lånekostnad + utebliven avkastning på kontantinsatsen + löpande kostnader</i>. Ingen kostnad för själva försäljningen ingår.</li>
+    <li>Vid leasing räknas förhöjd förstahyra, alla månadsavgifter, övermil, avgifter vid återlämning och de löpande kostnader som <i>inte</i> ingår i hyran. Ingen bil finns kvar efter avtalet.</li>
+    <li>Restvärde är den svåraste uppskattningen och påverkar köpalternativen mest. Testa olika värden.</li>
+    <li>Kalkylatorn är vägledande och ersätter inte offerter eller rådgivning.</li>
+  </ul>
+</div>
+
+<script>
+const fmt = new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 0 });
+const kr = n => fmt.format(Math.round(n)).replace(/−/g, "-") + " kr";
+
+const SHARED = [
+  { k: "months", label: "Period", unit: "månader", v: 36, min: 12, max: 120 },
+  { k: "mil", label: "Körsträcka", unit: "mil/år", v: 1500, min: 0 },
+  { k: "alt", label: "Alternativ avkastning på kapital", unit: "% /år", v: 3, step: 0.1, min: 0 },
+];
+
+// Scenarier: kategori, typ (buy/lease) och fält
+const BUY_FIELDS = (d) => [
+  { k: "price", label: "Pris", unit: "kr", v: d.price },
+  { k: "down", label: "Kontantinsats", unit: "% av pris", v: d.down, min: 0, max: 100 },
+  { k: "rate", label: "Billåneränta", unit: "% /år", v: 7, step: 0.1, min: 0 },
+  { k: "resid", label: "Restvärde efter perioden", unit: "% av pris", v: d.resid, min: 0, max: 100 },
+  { k: "ins", label: "Försäkring", unit: "kr/år", v: d.ins },
+  { k: "tax", label: "Fordonsskatt", unit: "kr/år", v: d.tax },
+  { k: "srv", label: "Service & reparationer", unit: "kr/år", v: d.srv },
+  { k: "tyre", label: "Däck & övrigt", unit: "kr/år", v: d.tyre },
+];
+const LEASE_FIELDS = (d) => [
+  { k: "fee", label: "Månadshyra", unit: "kr/mån", v: d.fee },
+  { k: "upfront", label: "Förhöjd förstahyra / startavgift", unit: "kr", v: d.upfront },
+  { k: "inclMil", label: "Ingår i milen", unit: "mil/år", v: d.incl },
+  { k: "over", label: "Avgift per övermil", unit: "kr/mil", v: 25 },
+  { k: "ret", label: "Återlämning (slitage, skador, avgifter)", unit: "kr", v: d.ret },
+];
+const INCL = [["ins", "Försäkring"], ["tax", "Skatt"], ["srv", "Service"], ["tyre", "Däck"]];
+
+const SCENARIOS = [
+  { id: "buyNew", type: "buy", title: "Köpa ny bil", sub: "Ny bil, ägd",
+    fields: BUY_FIELDS({ price: 400000, down: 20, resid: 55, ins: 9000, tax: 2000, srv: 2500, tyre: 1500 }) },
+  { id: "buyUsed", type: "buy", title: "Köpa begagnad bil", sub: "Ca 3 år gammal, ägd",
+    fields: BUY_FIELDS({ price: 250000, down: 20, resid: 72, ins: 7000, tax: 2000, srv: 5000, tyre: 1500 }) },
+  { id: "leaseNew", type: "lease", of: "buyNew", title: "Leasa ny bil", sub: "Samma bil som ovan",
+    fields: LEASE_FIELDS({ fee: 3490, upfront: 0, incl: 1500, ret: 3000 }),
+    incl: { ins: true, tax: true, srv: true, tyre: false } },
+  { id: "leaseUsed", type: "lease", of: "buyUsed", title: "Leasa begagnad bil", sub: "Samma bil som ovan",
+    fields: LEASE_FIELDS({ fee: 2990, upfront: 5000, incl: 1500, ret: 3000 }),
+    incl: { ins: false, tax: true, srv: false, tyre: false } },
+];
+
+const state = {};
+const $ = s => document.querySelector(s);
+
+function fieldHTML(scope, f) {
+  return `<label class="f">${f.label} <span class="u">${f.unit}</span>
+    <input type="number" inputmode="decimal" data-scope="${scope}" data-k="${f.k}" value="${f.v}"
+      ${f.min != null ? `min="${f.min}"` : ""} ${f.max != null ? `max="${f.max}"` : ""} step="${f.step || "any"}"></label>`;
+}
+
+function build() {
+  $("#shared").innerHTML = SHARED.map(f => fieldHTML("shared", f)).join("");
+  state.shared = Object.fromEntries(SHARED.map(f => [f.k, f.v]));
+  $("#scen").innerHTML = SCENARIOS.map(s => {
+    state[s.id] = Object.fromEntries(s.fields.map(f => [f.k, f.v]));
+    if (s.incl) state[s.id].incl = { ...s.incl };
+    const incl = s.incl ? `<fieldset><legend>Ingår i hyran</legend>${INCL.map(([k, t]) =>
+      `<label><input type="checkbox" data-scope="${s.id}" data-incl="${k}" ${s.incl[k] ? "checked" : ""}> ${t}</label>`).join("")}</fieldset>` : "";
+    return `<div class="card"><h3>${s.title}</h3><div class="sub">${s.sub}</div>
+      ${s.fields.map(f => fieldHTML(s.id, f)).join("")}${incl}</div>`;
+  }).join("");
+}
+
+// ---- Beräkning ----
+function calcBuy(p, sh) {
+  const yrs = sh.months / 12;
+  const loan = p.price * (1 - p.down / 100);
+  const r = p.rate / 100 / 12, n = sh.months;
+  const pay = loan === 0 ? 0 : r === 0 ? loan / n : loan * r / (1 - Math.pow(1 + r, -n));
+  const interest = pay * n - loan;
+  const opp = p.price * (p.down / 100) * (sh.alt / 100) * yrs;
+  const dep = p.price * (1 - p.resid / 100);
+  const run = (p.ins + p.tax + p.srv + p.tyre) * yrs;
+  const parts = [
+    { c: "--c-dep", t: "Värdeminskning", v: dep },
+    { c: "--c-fin", t: "Ränta & utebliven avkastning", v: interest + opp },
+    { c: "--c-run", t: "Försäkring, skatt, service, däck", v: run },
+  ];
+  return { parts, total: parts.reduce((a, x) => a + x.v, 0), dep, interest, opp, run };
+}
+
+function calcLease(p, buyP, sh) {
+  const yrs = sh.months / 12;
+  const rent = p.fee * sh.months;
+  const over = Math.max(0, sh.mil - p.inclMil) * yrs * p.over;
+  const fees = p.upfront + p.ret;
+  const opp = p.upfront * (sh.alt / 100) * yrs;
+  let run = 0;
+  for (const [k] of INCL) if (!p.incl_[k]) run += buyP[k] * yrs;
+  const parts = [
+    { c: "--c-lease", t: "Månadshyra", v: rent },
+    { c: "--c-fee", t: "Startavgift, återlämning, övermil", v: fees + over + opp },
+    { c: "--c-run", t: "Kostnader som inte ingår i hyran", v: run },
+  ];
+  return { parts, total: parts.reduce((a, x) => a + x.v, 0), rent, over, fees, opp, run };
+}
+
+function compute() {
+  const sh = state.shared;
+  const out = {};
+  for (const s of SCENARIOS) {
+    if (s.type === "buy") out[s.id] = calcBuy(state[s.id], sh);
+    else out[s.id] = calcLease({ ...state[s.id], incl_: state[s.id].incl }, state[s.of], sh);
+  }
+  return out;
+}
+
+function render() {
+  state.shared.months = Math.max(1, state.shared.months);
+  const sh = state.shared, res = compute();
+  const list = SCENARIOS.map(s => ({ s, r: res[s.id] })).sort((a, b) => a.r.total - b.r.total);
+  const best = list[0], max = Math.max(...list.map(x => x.r.total));
+  const months = sh.months;
+  const cheapestNew = ["buyNew", "leaseNew"].sort((a, b) => res[a].total - res[b].total)[0];
+  const cheapestUsed = ["buyUsed", "leaseUsed"].sort((a, b) => res[a].total - res[b].total)[0];
+  const title = id => SCENARIOS.find(s => s.id === id).title.toLowerCase();
+
+  let html = `<div class="verdict">Billigast över ${months} månader: <strong>${best.s.title.toLowerCase()}</strong>
+    – ${kr(best.r.total)} totalt, <strong>${kr(best.r.total / months)}/mån</strong>.<br>
+    Ny bil: <b>${title(cheapestNew)}</b> är billigast (${kr(Math.abs(res.buyNew.total - res.leaseNew.total))} skillnad).
+    Begagnad bil: <b>${title(cheapestUsed)}</b> är billigast (${kr(Math.abs(res.buyUsed.total - res.leaseUsed.total))} skillnad).</div>`;
+
+  html += `<div class="card"><h2>Total kostnad över ${months} månader</h2><div class="rows">` +
+    list.map(({ s, r }, i) => `<div class="row ${i === 0 ? "best" : ""}">
+      <div class="name">${s.title}<small>${s.sub}</small></div>
+      <div class="bar" style="width:${(r.total / max * 100).toFixed(1)}%" title="${kr(r.total)}">
+        ${r.parts.map(p => `<i style="width:${p.v > 0 ? (p.v / r.total * 100).toFixed(2) : 0}%;background:var(${p.c})" title="${p.t}: ${kr(p.v)}"></i>`).join("")}
+      </div>
+      <div class="num"><b>${kr(r.total / months)}/mån</b><small>${kr(r.total)} totalt</small></div></div>`).join("") +
+    `</div><div class="legend">
+      <span style="--c:var(--c-dep)">Värdeminskning</span><span style="--c:var(--c-fin)">Ränta &amp; utebliven avkastning</span>
+      <span style="--c:var(--c-lease)">Månadshyra</span><span style="--c:var(--c-fee)">Startavgift, återlämning, övermil</span>
+      <span style="--c:var(--c-run)">Övriga löpande kostnader</span></div></div>`;
+
+  // Detaljtabell
+  const rowsDef = [
+    ["Värdeminskning", r => r.dep], ["Låneränta", r => r.interest], ["Utebliven avkastning på kapital", r => (r.opp)],
+    ["Månadshyra", r => r.rent], ["Startavgift + återlämning", r => r.fees], ["Övermil", r => r.over],
+    ["Försäkring, skatt, service, däck", r => r.run], ["Totalt", r => r.total], ["Per månad", r => r.total / months],
+  ];
+  html += `<div class="card" style="margin-top:16px"><h2>Uppdelning</h2><div class="tablewrap"><table><thead><tr><th></th>` +
+    SCENARIOS.map(s => `<th>${s.title}</th>`).join("") + `</tr></thead><tbody>` +
+    rowsDef.map(([label, fn], i) => `<tr style="${i >= 7 ? "font-weight:700" : ""}"><td>${label}</td>` +
+      SCENARIOS.map(s => { const v = fn(res[s.id]); return `<td>${v == null || isNaN(v) ? "–" : (v === 0 ? "–" : kr(v))}</td>`; }).join("") + `</tr>`).join("") +
+    `</tbody></table></div></div>`;
+
+  // Insikter: break-even
+  const ins = [];
+  for (const s of SCENARIOS.filter(x => x.type === "lease")) {
+    const r = res[s.id], b = res[s.of];
+    const p = state[s.id];
+    const be = (b.total - (r.total - r.rent)) / months;
+    const diff = r.total - b.total;
+    if (be <= 0) ins.push(`<li><b>${s.title}:</b> även med gratis hyra blir det dyrare än att köpa, på grund av avgifter och kostnader som inte ingår.</li>`);
+    else ins.push(`<li><b>${s.title}:</b> leasing är ${diff > 0 ? "dyrare" : "billigare"} än köp med ${kr(Math.abs(diff))} över perioden. Leasing lönar sig först om månadshyran är under <b>${kr(be)}</b> (nu ${kr(p.fee)}).</li>`);
+  }
+  const overNew = Math.max(0, sh.mil - state.leaseNew.inclMil);
+  if (overNew > 0) ins.push(`<li>Du kör ${fmt.format(sh.mil)} mil/år men leasingavtalet ger ${fmt.format(state.leaseNew.inclMil)} – övermil kostar ${kr(overNew * state.leaseNew.over)} per år.</li>`);
+  html += `<div class="card insight"><h2>Så ska du tolka det</h2><ul>${ins.join("")}</ul></div>`;
+
+  $("#results").innerHTML = html;
+}
+
+function onInput(e) {
+  const t = e.target, scope = t.dataset.scope;
+  if (!scope) return;
+  if (t.dataset.incl) state[scope].incl[t.dataset.incl] = t.checked;
+  else state[scope === "shared" ? "shared" : scope][t.dataset.k] = parseFloat(t.value) || 0;
+  render();
+}
+
+build();
+document.addEventListener("input", onInput);
+document.addEventListener("change", onInput);
+render();
+</script>
+</body>
+</html>
